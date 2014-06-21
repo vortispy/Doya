@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">"Doya"</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="next_button">Next</string>
+    <string name="plus_button">+1</string>
+    <string name="minus_button">-1</string>
+
+</resources>
