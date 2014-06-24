@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pre-dex-items>
+
+    <item
+        dex="/Users/vortispy/Documents/Doya/app/build/intermediates/pre-dexed/debug/commons-pool2-2.0-55f471bf58ab3fbafaa58f8e9e9cd2f7f0c654eb.jar"
+        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-pool2/2.0/4f8826f7a470c31f5089d73e3afa0d6761dc1b79/commons-pool2-2.0.jar"
+        jumboMode="false"
+        revision="19.1.0"
+        sha1="4f8826f7a470c31f5089d73e3afa0d6761dc1b79"/>
+    <item
+        dex="/Users/vortispy/Documents/Doya/app/build/intermediates/pre-dexed/debug/jedis-2.4.2-6ffb0b05c043de5d3d045359c59dbabe677e6cf3.jar"
+        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/redis.clients/jedis/2.4.2/1daf838f454ede86d04a52f32b4aa2df0c45fcf1/jedis-2.4.2.jar"
+        jumboMode="false"
+        revision="19.1.0"
+        sha1="1daf838f454ede86d04a52f32b4aa2df0c45fcf1"/>
+
+</pre-dex-items>

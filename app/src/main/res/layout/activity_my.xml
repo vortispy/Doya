@@ -43,7 +43,9 @@
         android:text="@string/minus_button"
         android:id="@+id/minus"
         android:layout_marginLeft="10dp"
-        android:layout_toRightOf="@id/plus"
+        android:layout_toRightOf="@+id/plus"
+        android:layout_above="@+id/button"
+        android:layout_marginBottom="32dp"
         />
 
     <TextView
