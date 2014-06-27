@@ -11,6 +11,7 @@ import android.widget.TextView;
 import java.util.Set;
 
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Tuple;
 import vortispy.doya.R;
 
 public class Ranking extends Activity {
@@ -44,22 +45,22 @@ public class Ranking extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-    public class GetRanking extends AsyncTask<String,String, Set<String>>{
+    public class GetRanking extends AsyncTask<String,String, Set<Tuple>>{
         Jedis jd = new Jedis(LOCALHOST);
         @Override
-        protected Set<String> doInBackground(String... strings) {
-            Set<String> s = this.jd.zrevrange(strings[0], 0, 10);
+        protected Set<Tuple> doInBackground(String... strings) {
+            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
             return s;
         }
 
         @Override
-        protected void onPostExecute(Set<String> s) {
+        protected void onPostExecute(Set<Tuple> s) {
             TextView t = (TextView) findViewById(R.id.rankView);
             String text = "";
 
             int rank = 1;
-            for (String anInner : s) {
-                text += Integer.toString(rank)+ ": " + anInner + "\n";
+            for (Tuple anInner : s) {
+                text += Integer.toString(rank)+ ": " + anInner.getElement()+ " " + anInner.getScore() + "point\n";
                 rank++;
             }
             //t.setText(s.toString());
