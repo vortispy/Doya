@@ -1,6 +1,10 @@
 package vortispy.doya;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.Menu;
@@ -9,6 +13,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
 import redis.clients.jedis.Jedis;
 
@@ -40,6 +48,9 @@ public class MyActivity extends Activity {
         }
     }
 
+    final String LOCALHOST = "10.0.2.2";// "10.0.2.2" is PC localhost
+
+    private final int REQUEST_GALLERY = 0;
     int nowId = 0;
     final DoyaPlus doyas[] = {new DoyaPlus(R.drawable.dog1, "dog1"),new DoyaPlus(R.drawable.dog2, "dog2"),new DoyaPlus(R.drawable.dog3, "dog3")};
 
@@ -59,12 +70,8 @@ public class MyActivity extends Activity {
         image.setImageResource(R.drawable.dog1);
         final TextView point = (TextView) findViewById(R.id.pointView);
 
-        for (DoyaPlus doya : doyas) {
-            asjd = new AsyncJedis(point);
-            asjd.execute("set", doya.getName(), "0");
-        }
-
-        point.setText(String.valueOf(doyas[nowId].getPoint()));
+        asjd = new AsyncJedis(point);
+        asjd.execute("get", doyas[nowId].getName());
 
         Button nextButton = (Button) findViewById(R.id.button);
         nextButton.setOnClickListener(new View.OnClickListener() {
@@ -97,6 +104,28 @@ public class MyActivity extends Activity {
             }
         });
 
+        Button addImage = (Button) findViewById(R.id.addImageButton);
+        addImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+//                Intent i = new Intent(getApplicationContext(), PickPhotoActivity.class);
+//                startActivity(i);
+                Intent i = new Intent();
+                i.setType("image/*");
+                i.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(i, REQUEST_GALLERY);
+            }
+        });
+
+        final Button ranking = (Button) findViewById(R.id.ranking);
+        ranking.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(getApplicationContext(), Ranking.class);
+                startActivity(i);
+            }
+        });
+
 
     }
 
@@ -120,6 +149,29 @@ public class MyActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if(requestCode == REQUEST_GALLERY && resultCode == Activity.RESULT_OK) {
+            final Uri exifData = data.getData();
+            final InputStream ins;
+            try {
+                ins = getContentResolver().openInputStream(exifData);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                return;
+            }
+            final Bitmap img  = BitmapFactory.decodeStream(ins);
+
+            if (img != null) {
+                // 選択した画像を表示
+                ImageView imageView = (ImageView) findViewById(R.id.imageView);
+                imageView.setImageBitmap(img);
+            }else{
+                Toast.makeText(this, "error!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     public class AsyncJedis extends AsyncTask<String, String, String>{
         Jedis jd;
         TextView textView;
@@ -131,18 +183,27 @@ public class MyActivity extends Activity {
 
         @Override
         protected String doInBackground(String... strings) {
-            this.jd = new Jedis("10.0.2.2");
+            this.jd = new Jedis(LOCALHOST);
             String ret = "";
+            String key = "point";
             String method = strings[0];
+            if (method.equals("set")){
+                this.jd.zadd(key, Double.valueOf(strings[2]), strings[1]);
+                ret = this.jd.set(strings[1], strings[2]);
+            }else if(!this.jd.exists(strings[1])){
+                this.jd.zadd(key, 0, strings[1]);
+                this.jd.set(strings[1], "0");
+            }
+
             if (method.equals("get")) {
                 ret = this.jd.get(strings[1]);
-            }else if (method.equals("set")){
-                ret = this.jd.set(strings[1], strings[2]);
             }else if (method.equals("incr")){
                 this.jd.incr(strings[1]);
+                this.jd.zincrby(key, 1, strings[1]);
                 ret = this.jd.get(strings[1]);
             }else if (method.equals("decr")){
                 this.jd.decr(strings[1]);
+                this.jd.zincrby(key, -1, strings[1]);
                 ret = this.jd.get(strings[1]);
             }
             return ret;

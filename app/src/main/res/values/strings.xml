@@ -7,5 +7,7 @@
     <string name="next_button">Next</string>
     <string name="plus_button">+1</string>
     <string name="minus_button">-1</string>
+    <string name="title_activity_pick_photo">PickPhotoActivity</string>
+    <string name="title_activity_ranking">ranking</string>
 
 </resources>
