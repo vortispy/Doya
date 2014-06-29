@@ -72,5 +72,22 @@
         android:layout_above="@+id/addImageButton"
         android:layout_toRightOf="@+id/minus" />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Show in browser"
+        android:id="@+id/show_in_browser_button"
+        android:layout_alignParentBottom="true"
+        android:layout_toRightOf="@+id/addImageButton" />
+
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Photo List"
+        android:id="@+id/photo_list_button"
+        android:layout_above="@+id/show_in_browser_button"
+        android:layout_toRightOf="@+id/ranking" />
+
 
 </RelativeLayout>

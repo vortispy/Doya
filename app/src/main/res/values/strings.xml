@@ -9,5 +9,10 @@
     <string name="minus_button">-1</string>
     <string name="title_activity_pick_photo">PickPhotoActivity</string>
     <string name="title_activity_ranking">ranking</string>
+    <string name="ok">OK</string>
+    <string name="uploading">Uploading…</string>
+    <string name="upload_failure_title">Upload Failure</string>
+    <string name="browser_failure_title">Browser Failure</string>
+    <string name="title_activity_image_list">ImageListActivity</string>
 
 </resources>

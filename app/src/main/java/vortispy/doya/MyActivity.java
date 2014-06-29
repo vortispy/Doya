@@ -1,22 +1,47 @@
 package vortispy.doya;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
+import com.amazonaws.services.s3.model.ListObjectsRequest;
+import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.ResponseHeaderOverrides;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
+
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
 
 import redis.clients.jedis.Jedis;
 
@@ -48,6 +73,12 @@ public class MyActivity extends Activity {
         }
     }
 
+    private List<String> pictures = new ArrayList<String>();
+    private ListView mListView;
+    private ArrayAdapter<String> adapter;
+
+    private AmazonS3Client s3Client;
+
     final String LOCALHOST = "10.0.2.2";// "10.0.2.2" is PC localhost
 
     private final int REQUEST_GALLERY = 0;
@@ -66,6 +97,14 @@ public class MyActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
 
+        s3Client = new AmazonS3Client(
+                new BasicAWSCredentials(
+                        getString(R.string.aws_access_key),
+                        getString(R.string.aws_secret_key)
+                ));
+
+        adapter = new ArrayAdapter<String>(
+                this, android.R.layout.simple_list_item_1, pictures);
         final ImageView image = (ImageView) findViewById(R.id.imageView);
         image.setImageResource(R.drawable.dog1);
         final TextView point = (TextView) findViewById(R.id.pointView);
@@ -126,6 +165,23 @@ public class MyActivity extends Activity {
             }
         });
 
+        Button showInBrowser = (Button) findViewById(R.id.show_in_browser_button);
+        showInBrowser.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new S3GeneratePresignedUrlTask().execute();
+            }
+        });
+
+        Button getPhotoList = (Button) findViewById(R.id.photo_list_button);
+        getPhotoList.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(getApplicationContext(), ImageListActivity.class);
+                startActivity(i);
+            }
+        });
+
 
     }
 
@@ -151,6 +207,7 @@ public class MyActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == REQUEST_GALLERY && resultCode == Activity.RESULT_OK) {
             final Uri exifData = data.getData();
             final InputStream ins;
@@ -166,6 +223,8 @@ public class MyActivity extends Activity {
                 // 選択した画像を表示
                 ImageView imageView = (ImageView) findViewById(R.id.imageView);
                 imageView.setImageBitmap(img);
+                // upload image
+                new S3PutObjectTask().execute(exifData);
             }else{
                 Toast.makeText(this, "error!", Toast.LENGTH_SHORT).show();
             }
@@ -216,5 +275,255 @@ public class MyActivity extends Activity {
             this.jd.disconnect();
         }
     }
+    // Display an Alert message for an error or failure.
+    protected void displayAlert(String title, String message) {
 
+        AlertDialog.Builder confirm = new AlertDialog.Builder(this);
+        confirm.setTitle(title);
+        confirm.setMessage(message);
+
+        confirm.setNegativeButton(
+                MyActivity.this.getString(R.string.ok),
+                new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int which) {
+
+                        dialog.dismiss();
+                    }
+                });
+
+        confirm.show().show();
+    }
+
+    protected void displayErrorAlert(String title, String message) {
+
+        AlertDialog.Builder confirm = new AlertDialog.Builder(this);
+        confirm.setTitle(title);
+        confirm.setMessage(message);
+
+        confirm.setNegativeButton(
+                MyActivity.this.getString(R.string.ok),
+                new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface dialog, int which) {
+
+                        MyActivity.this.finish();
+                    }
+                });
+
+        confirm.show().show();
+    }
+
+    private class S3PutObjectTask extends AsyncTask<Uri, Void, S3TaskResult> {
+
+        ProgressDialog dialog;
+        Constants cons;
+
+        protected void onPreExecute() {
+            dialog = new ProgressDialog(MyActivity.this);
+            dialog.setMessage(MyActivity.this
+                    .getString(R.string.uploading));
+            dialog.setCancelable(false);
+            dialog.show();
+            cons = new Constants(getString(R.string.aws_access_key), getString(R.string.aws_secret_key));
+        }
+
+        protected S3TaskResult doInBackground(Uri... uris) {
+
+            if (uris == null || uris.length != 1) {
+                return null;
+            }
+
+            // The file location of the image selected.
+            Uri selectedImage = uris[0];
+
+
+            ContentResolver resolver = getContentResolver();
+            String fileSizeColumn[] = {OpenableColumns.SIZE};
+
+            Cursor cursor = resolver.query(selectedImage,
+                    fileSizeColumn, null, null, null);
+
+            cursor.moveToFirst();
+
+            int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+            // If the size is unknown, the value stored is null.  But since an int can't be
+            // null in java, the behavior is implementation-specific, which is just a fancy
+            // term for "unpredictable".  So as a rule, check if it's null before assigning
+            // to an int.  This will happen often:  The storage API allows for remote
+            // files, whose size might not be locally known.
+            String size = null;
+            if (!cursor.isNull(sizeIndex)) {
+                // Technically the column stores an int, but cursor.getString will do the
+                // conversion automatically.
+                size = cursor.getString(sizeIndex);
+            }
+
+            cursor.close();
+
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentType(resolver.getType(selectedImage));
+            if(size != null){
+                metadata.setContentLength(Long.parseLong(size));
+            }
+
+            S3TaskResult result = new S3TaskResult();
+
+            // Put the image data into S3.
+            try {
+                s3Client.createBucket(cons.getPictureBucket());
+
+                PutObjectRequest por = new PutObjectRequest(
+                        cons.getPictureBucket(), cons.PICTURE_NAME,
+                        resolver.openInputStream(selectedImage),metadata);
+                s3Client.putObject(por);
+            } catch (Exception exception) {
+
+                result.setErrorMessage(exception.getMessage());
+            }
+
+            return result;
+        }
+
+        protected void onPostExecute(S3TaskResult result) {
+
+            dialog.dismiss();
+
+            if (result.getErrorMessage() != null) {
+
+                displayErrorAlert(
+                        MyActivity.this
+                                .getString(R.string.upload_failure_title),
+                        result.getErrorMessage());
+            }
+        }
+    }
+
+    private class S3GeneratePresignedUrlTask extends
+            AsyncTask<Void, Void, S3TaskResult> {
+        Constants cons;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            cons = new Constants(getString(R.string.aws_access_key), getString(R.string.aws_secret_key));
+        }
+
+        protected S3TaskResult doInBackground(Void... voids) {
+
+            S3TaskResult result = new S3TaskResult();
+
+            try {
+                // Ensure that the image will be treated as such.
+                ResponseHeaderOverrides override = new ResponseHeaderOverrides();
+                override.setContentType("image/jpeg");
+
+                // Generate the presigned URL.
+
+                // Added an hour's worth of milliseconds to the current time.
+                Date expirationDate = new Date(
+                        System.currentTimeMillis() + 3600000);
+                GeneratePresignedUrlRequest urlRequest = new GeneratePresignedUrlRequest(
+                        cons.getPictureBucket(), cons.PICTURE_NAME);
+                urlRequest.setExpiration(expirationDate);
+                urlRequest.setResponseHeaders(override);
+
+                URL url = s3Client.generatePresignedUrl(urlRequest);
+
+                result.setUri(Uri.parse(url.toURI().toString()));
+
+            } catch (Exception exception) {
+
+                result.setErrorMessage(exception.getMessage());
+            }
+
+            return result;
+        }
+
+        protected void onPostExecute(S3TaskResult result) {
+
+            if (result.getErrorMessage() != null) {
+
+                displayErrorAlert(
+                        MyActivity.this
+                                .getString(R.string.browser_failure_title),
+                        result.getErrorMessage());
+            } else if (result.getUri() != null) {
+
+                // Display in Browser.
+                startActivity(new Intent(Intent.ACTION_VIEW, result.getUri()));
+            }
+        }
+    }
+
+    private class S3TaskResult {
+        String errorMessage = null;
+        Uri uri = null;
+        private List<String> pictureList = new ArrayList<String>();
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        public void setErrorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
+
+        public Uri getUri() {
+            return uri;
+        }
+
+        public void setUri(Uri uri) {
+            this.uri = uri;
+        }
+
+        public List<String> getPictureList() {
+            return pictureList;
+        }
+    }
+    private ProgressDialog createProgressDialog(Context context, String msg) {
+        ProgressDialog dialog = new ProgressDialog(context);
+        dialog.setMessage(msg);
+        dialog.setCancelable(false);
+        return dialog;
+    }
+
+    private class S3GetImageListTask extends
+            AsyncTask<String, Void, S3TaskResult> {
+
+        ProgressDialog dialog;
+
+        protected void onPreExecute() {
+            dialog = createProgressDialog(MyActivity.this, "画像一覧を取得中...");
+            dialog.show();
+        }
+
+        protected S3TaskResult doInBackground(String... params) {
+
+            S3TaskResult result = new S3TaskResult();
+            try {
+                ObjectListing objectListing = s3Client.listObjects(
+                        new ListObjectsRequest().withBucketName(params[0]));
+                List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
+                for (S3ObjectSummary summery : summeries) {
+                    result.getPictureList().add(summery.getKey());
+                }
+            } catch (Exception exception) {
+                result.setErrorMessage(exception.getMessage());
+            }
+            return result;
+        }
+
+        protected void onPostExecute(S3TaskResult result) {
+            dialog.dismiss();
+            if (result.getErrorMessage() != null) {
+                displayErrorAlert("画像一覧を取得できませんでした",
+                        result.getErrorMessage());
+            } else if (result.getPictureList().size() > 0) {
+                pictures.clear();
+                pictures.addAll(result.getPictureList());
+                adapter.notifyDataSetChanged();
+            }
+        }
+    }
 }

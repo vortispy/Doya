@@ -32,6 +32,10 @@
             android:name=".Ranking"
             android:label="@string/title_activity_ranking" >
         </activity>
+        <activity
+            android:name=".ImageListActivity"
+            android:label="@string/title_activity_image_list" >
+        </activity>
     </application>
 
 </manifest>
