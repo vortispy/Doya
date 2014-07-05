@@ -1,7 +1,10 @@
 package vortispy.doya;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Fragment;
+import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -47,6 +50,7 @@ import redis.clients.jedis.Jedis;
 
 
 public class MyActivity extends Activity {
+    /*
     private class DoyaPlus{
         int point = 0;
         int id;
@@ -72,7 +76,7 @@ public class MyActivity extends Activity {
             return this.name;
         }
     }
-
+*/
     private List<String> pictures = new ArrayList<String>();
     private ListView mListView;
     private ArrayAdapter<String> adapter;
@@ -83,26 +87,51 @@ public class MyActivity extends Activity {
 
     private final int REQUEST_GALLERY = 0;
     int nowId = 0;
-    final DoyaPlus doyas[] = {new DoyaPlus(R.drawable.dog1, "dog1"),new DoyaPlus(R.drawable.dog2, "dog2"),new DoyaPlus(R.drawable.dog3, "dog3")};
-
-    protected AsyncJedis asjd;
+    //final DoyaPlus doyas[] = {new DoyaPlus(R.drawable.dog1, "dog1"),new DoyaPlus(R.drawable.dog2, "dog2"),new DoyaPlus(R.drawable.dog3, "dog3")};
+/*
+    //protected AsyncJedis asjd;
     protected int getNowId(){
         return nowId;
     }
     protected void nextId(){
         nowId = nowId < doyas.length-1 ? nowId+1: 0;
     }
+    */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_my);
+        setContentView(R.layout.main_frame);
 
+        final ActionBar actionBar = getActionBar();
+        assert actionBar != null;
+        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
+
+        actionBar.addTab(actionBar
+            .newTab()
+            .setText("Image List")
+            .setTabListener(
+                    new MainTabListener<ImageListFragment>(
+                            this,
+                            "ImageList",
+                            ImageListFragment.class
+                    )
+            ));
+        actionBar.addTab(actionBar
+            .newTab()
+            .setText("Ranking")
+            .setTabListener(
+                    new MainTabListener<RankingFragment>(
+                            this,
+                            "Ranking",
+                            RankingFragment.class
+                    )
+            ));
         s3Client = new AmazonS3Client(
                 new BasicAWSCredentials(
                         getString(R.string.aws_access_key),
                         getString(R.string.aws_secret_key)
                 ));
-
+/*
         adapter = new ArrayAdapter<String>(
                 this, android.R.layout.simple_list_item_1, pictures);
         final ImageView image = (ImageView) findViewById(R.id.imageView);
@@ -181,10 +210,8 @@ public class MyActivity extends Activity {
                 startActivity(i);
             }
         });
-
-
+*/
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -208,6 +235,7 @@ public class MyActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        /*
         if(requestCode == REQUEST_GALLERY && resultCode == Activity.RESULT_OK) {
             final Uri exifData = data.getData();
             final InputStream ins;
@@ -229,8 +257,13 @@ public class MyActivity extends Activity {
                 Toast.makeText(this, "error!", Toast.LENGTH_SHORT).show();
             }
         }
+        */
     }
 
+    public interface OnFragmentInteractionListener {
+        public void onFragmentInteraction(Uri uri);
+    }
+/*
     public class AsyncJedis extends AsyncTask<String, String, String>{
         Jedis jd;
         TextView textView;
@@ -526,4 +559,5 @@ public class MyActivity extends Activity {
             }
         }
     }
+    */
 }

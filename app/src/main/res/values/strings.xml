@@ -14,5 +14,6 @@
     <string name="upload_failure_title">Upload Failure</string>
     <string name="browser_failure_title">Browser Failure</string>
     <string name="title_activity_image_list">ImageListActivity</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>

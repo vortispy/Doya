@@ -34,7 +34,7 @@ public class Constants {
 //	public static final String ACCESS_KEY_ID = Resources.getSystem().getString(R.string.aws_access_key);
 //	public static final String SECRET_KEY = Resources.getSystem().getString(R.string.aws_secret_key);
 	
-	public static final String PICTURE_BUCKET = "picture-bucket";
+	public static final String PICTURE_BUCKET = "doya";
 	public static final String PICTURE_NAME = "test.jpg";
 
     public static String ACCESS_KEY_ID;
@@ -46,7 +46,7 @@ public class Constants {
     }
 	
 	public static String getPictureBucket() {
-		return ("my-unique-name" + ACCESS_KEY_ID + PICTURE_BUCKET).toLowerCase(Locale.US);
+		return (PICTURE_BUCKET).toLowerCase(Locale.US);
 	}
 	
 }
