@@ -19,6 +19,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -216,8 +217,11 @@ public class MyActivity extends Activity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.my, menu);
-        return true;
+//        getMenuInflater().inflate(R.menu.my, menu);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.my, menu);
+
+        return super.onCreateOptionsMenu(menu);
     }
 
     @Override
@@ -229,14 +233,23 @@ public class MyActivity extends Activity {
         if (id == R.id.action_settings) {
             return true;
         }
+        switch (item.getItemId()){
+            case R.id.action_settings:
+                return true;
+            case R.id.new_picture:
+                Intent i = new Intent();
+                i.setType("image/*");
+                i.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(i, REQUEST_GALLERY);
+                return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        /*
-        if(requestCode == REQUEST_GALLERY && resultCode == Activity.RESULT_OK) {
+           if(requestCode == REQUEST_GALLERY && resultCode == Activity.RESULT_OK) {
             final Uri exifData = data.getData();
             final InputStream ins;
             try {
@@ -249,21 +262,20 @@ public class MyActivity extends Activity {
 
             if (img != null) {
                 // 選択した画像を表示
-                ImageView imageView = (ImageView) findViewById(R.id.imageView);
-                imageView.setImageBitmap(img);
+//                ImageView imageView = (ImageView) findViewById(R.id.imageView);
+//                imageView.setImageBitmap(img);
                 // upload image
                 new S3PutObjectTask().execute(exifData);
             }else{
                 Toast.makeText(this, "error!", Toast.LENGTH_SHORT).show();
             }
         }
-        */
     }
 
     public interface OnFragmentInteractionListener {
         public void onFragmentInteraction(Uri uri);
     }
-/*
+
     public class AsyncJedis extends AsyncTask<String, String, String>{
         Jedis jd;
         TextView textView;
@@ -340,7 +352,7 @@ public class MyActivity extends Activity {
 
                     public void onClick(DialogInterface dialog, int which) {
 
-                        MyActivity.this.finish();
+//                        MyActivity.this.finish();
                     }
                 });
 
@@ -404,7 +416,7 @@ public class MyActivity extends Activity {
 
             // Put the image data into S3.
             try {
-                s3Client.createBucket(cons.getPictureBucket());
+//                s3Client.createBucket(cons.getPictureBucket());
 
                 PutObjectRequest por = new PutObjectRequest(
                         cons.getPictureBucket(), cons.PICTURE_NAME,
@@ -559,5 +571,4 @@ public class MyActivity extends Activity {
             }
         }
     }
-    */
 }
