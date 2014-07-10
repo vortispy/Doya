@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -12,7 +14,9 @@ import android.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -24,6 +28,7 @@ import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -95,6 +100,13 @@ public class ImageListFragment extends Fragment {
 
         mListView = (ListView)v.findViewById(R.id.list_view_s3);
         mListView.setAdapter(adapter);
+
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                new S3GetImageTask().execute(Constants.getPictureBucket(), pictures.get(i));
+            }
+        });
 
         s3Client = new AmazonS3Client(
                 new BasicAWSCredentials(
@@ -172,6 +184,8 @@ public class ImageListFragment extends Fragment {
         String errorMessage = null;
         Uri uri = null;
         private List<String> pictureList = new ArrayList<String>();
+        String key;
+        Bitmap bitmap;
 
         public String getErrorMessage() {
             return errorMessage;
@@ -191,6 +205,22 @@ public class ImageListFragment extends Fragment {
 
         public List<String> getPictureList() {
             return pictureList;
+        }
+
+        public void setKey(String key){
+            this.key = key;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public void setBitmap(Bitmap bitmap) {
+            this.bitmap = bitmap;
+        }
+
+        public Bitmap getBitmap() {
+            return bitmap;
         }
     }
     private ProgressDialog createProgressDialog(Context context, String msg) {
@@ -216,8 +246,9 @@ public class ImageListFragment extends Fragment {
             try {
                 s3Client.setRegion(Region.getRegion(Regions.AP_NORTHEAST_1));
                 List<Bucket> buckets = s3Client.listBuckets();
-                ObjectListing objectListing = s3Client.listObjects(
-                        new ListObjectsRequest().withBucketName(params[0]));
+//                ObjectListing objectListing = s3Client.listObjects(
+//                        new ListObjectsRequest().withBucketName(params[0]));
+                ObjectListing objectListing = s3Client.listObjects(Constants.getPictureBucket());
                 List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
                 for (S3ObjectSummary summery : summeries) {
                     result.getPictureList().add(summery.getKey());
@@ -239,6 +270,61 @@ public class ImageListFragment extends Fragment {
                 pictures.clear();
                 pictures.addAll(result.getPictureList());
                 adapter.notifyDataSetChanged();
+            }
+        }
+    }
+
+    protected class S3GetImageTask extends
+            AsyncTask<String, Void, S3TaskResult> {
+
+        ProgressDialog dialog;
+
+        protected void onPreExecute() {
+            dialog = createProgressDialog(getActivity(), "画像を取得中...");
+            dialog.show();
+        }
+
+        /**
+         * 指定した画像を S3 から取得.
+         * @param params [0]:バケット名, [1]:オブジェクト名
+         */
+        protected S3TaskResult doInBackground(String... params) {
+            S3TaskResult result = new S3TaskResult();
+            try {
+                InputStream in = s3Client.getObject(params[0], params[1])
+                        .getObjectContent();
+                Bitmap img = BitmapFactory.decodeStream(in);
+                result.setKey(params[0] + "/" + params[1]);
+                result.setBitmap(img);
+            } catch (Exception exception) {
+                result.setErrorMessage(exception.getMessage());
+            }
+            return result;
+        }
+
+        /**
+         * 非同期処理終了後に実行される.
+         * 取得した画像ファイルをダイアログで表示する.
+         */
+        protected void onPostExecute(S3TaskResult result) {
+            dialog.dismiss();
+            if (result.getErrorMessage() != null) {
+                displayErrorAlert("画像ファイルが取得できませんでした",
+                        result.getErrorMessage());
+            } else {
+                ImageView imgView = new ImageView(getActivity());
+                imgView.setImageBitmap(result.getBitmap());
+                AlertDialog dialog = new AlertDialog.Builder(getActivity())
+                        .setTitle(result.getKey())
+                        .setView(imgView)
+                        .setPositiveButton("OK",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog,
+                                                        int which) {
+                                    }
+                                }).create();
+                dialog.show();
             }
         }
     }

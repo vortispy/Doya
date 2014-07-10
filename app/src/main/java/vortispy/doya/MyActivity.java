@@ -3,14 +3,11 @@ package vortispy.doya;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Fragment;
-import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -21,10 +18,7 @@ import android.provider.OpenableColumns;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -43,7 +37,6 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -416,10 +409,12 @@ public class MyActivity extends Activity {
 
             // Put the image data into S3.
             try {
-//                s3Client.createBucket(cons.getPictureBucket());
+                if(!s3Client.doesBucketExist(cons.getPictureBucket())){
+                    s3Client.createBucket(cons.getPictureBucket());
+                }
 
                 PutObjectRequest por = new PutObjectRequest(
-                        cons.getPictureBucket(), cons.PICTURE_NAME,
+                        cons.getPictureBucket(), cons.filename,
                         resolver.openInputStream(selectedImage),metadata);
                 s3Client.putObject(por);
             } catch (Exception exception) {
@@ -469,7 +464,7 @@ public class MyActivity extends Activity {
                 Date expirationDate = new Date(
                         System.currentTimeMillis() + 3600000);
                 GeneratePresignedUrlRequest urlRequest = new GeneratePresignedUrlRequest(
-                        cons.getPictureBucket(), cons.PICTURE_NAME);
+                        cons.getPictureBucket(), cons.filename);
                 urlRequest.setExpiration(expirationDate);
                 urlRequest.setResponseHeaders(override);
 
@@ -533,42 +528,5 @@ public class MyActivity extends Activity {
         return dialog;
     }
 
-    private class S3GetImageListTask extends
-            AsyncTask<String, Void, S3TaskResult> {
 
-        ProgressDialog dialog;
-
-        protected void onPreExecute() {
-            dialog = createProgressDialog(MyActivity.this, "画像一覧を取得中...");
-            dialog.show();
-        }
-
-        protected S3TaskResult doInBackground(String... params) {
-
-            S3TaskResult result = new S3TaskResult();
-            try {
-                ObjectListing objectListing = s3Client.listObjects(
-                        new ListObjectsRequest().withBucketName(params[0]));
-                List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
-                for (S3ObjectSummary summery : summeries) {
-                    result.getPictureList().add(summery.getKey());
-                }
-            } catch (Exception exception) {
-                result.setErrorMessage(exception.getMessage());
-            }
-            return result;
-        }
-
-        protected void onPostExecute(S3TaskResult result) {
-            dialog.dismiss();
-            if (result.getErrorMessage() != null) {
-                displayErrorAlert("画像一覧を取得できませんでした",
-                        result.getErrorMessage());
-            } else if (result.getPictureList().size() > 0) {
-                pictures.clear();
-                pictures.addAll(result.getPictureList());
-                adapter.notifyDataSetChanged();
-            }
-        }
-    }
 }
