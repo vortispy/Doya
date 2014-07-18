@@ -24,7 +24,6 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
@@ -94,7 +93,7 @@ public class ImageListFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View v = inflater.inflate(R.layout.activity_image_list, container, false);
+        View v = inflater.inflate(R.layout.fragment_image_list, container, false);
         adapter = new ArrayAdapter<String>(
                 getActivity(), android.R.layout.simple_list_item_1, pictures);
 
@@ -104,7 +103,7 @@ public class ImageListFragment extends Fragment {
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                new S3GetImageTask().execute(Constants.getPictureBucket(), pictures.get(i));
+                new S3GetImageTask().execute(Constants.getBucket(), pictures.get(i));
             }
         });
 
@@ -114,9 +113,7 @@ public class ImageListFragment extends Fragment {
                         getString(R.string.aws_secret_key)
                 ));
 
-        new S3GetImageListTask().execute(new Constants(
-                getString(R.string.aws_access_key),
-                getString(R.string.aws_secret_key)).getPictureBucket());
+        new S3GetImageListTask().execute(Constants.getBucket());
         // Inflate the layout for this fragment
         return v;
     }
@@ -248,7 +245,7 @@ public class ImageListFragment extends Fragment {
                 List<Bucket> buckets = s3Client.listBuckets();
 //                ObjectListing objectListing = s3Client.listObjects(
 //                        new ListObjectsRequest().withBucketName(params[0]));
-                ObjectListing objectListing = s3Client.listObjects(Constants.getPictureBucket());
+                ObjectListing objectListing = s3Client.listObjects(Constants.getBucket());
                 List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
                 for (S3ObjectSummary summery : summeries) {
                     result.getPictureList().add(summery.getKey());

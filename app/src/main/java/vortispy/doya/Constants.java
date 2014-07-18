@@ -14,6 +14,10 @@
  */
 package vortispy.doya;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.res.Resources;
+
 import java.util.Locale;
 
 public class Constants {
@@ -30,8 +34,8 @@ public class Constants {
 	
 //	public static final String ACCESS_KEY_ID = Resources.getSystem().getString(R.string.aws_access_key);
 //	public static final String SECRET_KEY = Resources.getSystem().getString(R.string.aws_secret_key);
-	
-	public static String bucket = "doya";
+
+    public static String bucket = "Doya";
 	public static String filename = "1.jpg";
 
     public static String ACCESS_KEY_ID;
@@ -52,7 +56,7 @@ public class Constants {
         return this.filename;
     }
 	
-	public static String getPictureBucket() {
+	public static String getBucket() {
 		return (bucket).toLowerCase(Locale.US);
 	}
 	

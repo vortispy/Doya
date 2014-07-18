@@ -78,7 +78,7 @@ public class RankingFragment extends Fragment {
         g.execute("point");
         // Inflate the layout for this fragment
 
-        v = inflater.inflate(R.layout.activity_ranking, container, false);
+        v = inflater.inflate(R.layout.fragment_ranking, container, false);
         return v;
     }
 
