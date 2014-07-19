@@ -21,6 +21,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -30,6 +31,8 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 
 public class MyActivity extends Activity {
@@ -44,10 +47,16 @@ public class MyActivity extends Activity {
     private final int REQUEST_GALLERY = 0;
     int nowId = 0;
 
+    private String s3Bucket;
+    private String s3BucketPrefix;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_frame);
+
+        s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
+        s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
 
         final ActionBar actionBar = getActionBar();
         assert actionBar != null;
@@ -137,6 +146,18 @@ public class MyActivity extends Activity {
         public void onFragmentInteraction(Uri uri);
     }
 
+    protected boolean s3doesKeyExist(String key){
+        try{
+            s3Client.getObject(s3Bucket, key);
+        } catch(AmazonServiceException e){
+            String errorCode = e.getErrorCode();
+            if(!errorCode.equals("NoSuchKey")){
+                throw e;
+            }
+            return false;
+        }
+        return true;
+    }
 
     // Display an Alert message for an error or failure.
     protected void displayAlert(String title, String message) {
@@ -180,7 +201,7 @@ public class MyActivity extends Activity {
     private class S3PutObjectTask extends AsyncTask<Uri, Void, S3TaskResult> {
 
         ProgressDialog dialog;
-        Constants cons;
+        String objectKey;
 
         protected void onPreExecute() {
             dialog = new ProgressDialog(MyActivity.this);
@@ -188,7 +209,8 @@ public class MyActivity extends Activity {
                     .getString(R.string.uploading));
             dialog.setCancelable(false);
             dialog.show();
-            cons = new Constants(getString(R.string.aws_access_key), getString(R.string.aws_secret_key));
+
+            objectKey = s3BucketPrefix + UUID.randomUUID().toString();
         }
 
         protected S3TaskResult doInBackground(Uri... uris) {
@@ -234,12 +256,15 @@ public class MyActivity extends Activity {
 
             // Put the image data into S3.
             try {
-                if(!s3Client.doesBucketExist(cons.getBucket())){
-                    s3Client.createBucket(cons.getBucket());
+                if(!s3Client.doesBucketExist(s3Bucket)){
+                    s3Client.createBucket(s3Bucket);
+                }
+                if(s3doesKeyExist(objectKey)){
+                   throw new AmazonServiceException("This key has already exist: " + objectKey);
                 }
 
                 PutObjectRequest por = new PutObjectRequest(
-                        cons.getBucket(), cons.filename,
+                        s3Bucket, objectKey,
                         resolver.openInputStream(selectedImage),metadata);
                 s3Client.putObject(por);
             } catch (Exception exception) {

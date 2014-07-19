@@ -24,12 +24,14 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.Bucket;
+import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 
 /**
@@ -58,6 +60,8 @@ public class ImageListFragment extends Fragment {
     private ArrayAdapter<String> adapter;
 
     private AmazonS3Client s3Client;
+    private String s3Bucket;
+    private String s3BucketPrefix;
 
     /**
      * Use this factory method to create a new instance of
@@ -87,6 +91,8 @@ public class ImageListFragment extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
+        s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
     }
 
     @Override
@@ -103,7 +109,7 @@ public class ImageListFragment extends Fragment {
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                new S3GetImageTask().execute(Constants.getBucket(), pictures.get(i));
+                new S3GetImageTask().execute(s3Bucket, pictures.get(i));
             }
         });
 
@@ -113,7 +119,7 @@ public class ImageListFragment extends Fragment {
                         getString(R.string.aws_secret_key)
                 ));
 
-        new S3GetImageListTask().execute(Constants.getBucket());
+        new S3GetImageListTask().execute(s3Bucket);
         // Inflate the layout for this fragment
         return v;
     }
@@ -243,12 +249,14 @@ public class ImageListFragment extends Fragment {
             try {
                 s3Client.setRegion(Region.getRegion(Regions.AP_NORTHEAST_1));
                 List<Bucket> buckets = s3Client.listBuckets();
-//                ObjectListing objectListing = s3Client.listObjects(
-//                        new ListObjectsRequest().withBucketName(params[0]));
-                ObjectListing objectListing = s3Client.listObjects(Constants.getBucket());
+
+                ObjectListing objectListing = s3Client.listObjects(params[0], s3BucketPrefix);
+
                 List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
                 for (S3ObjectSummary summery : summeries) {
-                    result.getPictureList().add(summery.getKey());
+                    if (!summery.getKey().equals(s3BucketPrefix)) {
+                        result.getPictureList().add(summery.getKey());
+                    }
                 }
             } catch (Exception exception) {
                 result.setErrorMessage(exception.getMessage());
