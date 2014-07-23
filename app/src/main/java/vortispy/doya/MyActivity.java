@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import redis.clients.jedis.Jedis;
+
 
 public class MyActivity extends Activity {
     private List<String> pictures = new ArrayList<String>();
@@ -202,6 +204,7 @@ public class MyActivity extends Activity {
 
         ProgressDialog dialog;
         String objectKey;
+        Jedis jedis;
 
         protected void onPreExecute() {
             dialog = new ProgressDialog(MyActivity.this);
@@ -211,6 +214,7 @@ public class MyActivity extends Activity {
             dialog.show();
 
             objectKey = s3BucketPrefix + UUID.randomUUID().toString();
+            jedis = new Jedis(LOCALHOST);
         }
 
         protected S3TaskResult doInBackground(Uri... uris) {
@@ -267,6 +271,7 @@ public class MyActivity extends Activity {
                         s3Bucket, objectKey,
                         resolver.openInputStream(selectedImage),metadata);
                 s3Client.putObject(por);
+                jedis.zadd("pictures", 0, objectKey);
             } catch (Exception exception) {
 
                 result.setErrorMessage(exception.getMessage());

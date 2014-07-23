@@ -1,8 +1,6 @@
 package vortispy.doya;
 
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -19,7 +17,6 @@ import android.widget.TextView;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.android.volley.RequestQueue;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 
@@ -27,6 +24,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+
+import redis.clients.jedis.Jedis;
 
 /**
  * Created by vortispy on 2014/07/19.
@@ -37,6 +36,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
     private RequestQueue requestQueue;
     private ImageLoader imageLoader;
+
+    final String LOCALHOST = "10.0.2.2";
 
     private class DoyaViewContainer{
         public ImageView imageView;
@@ -62,6 +63,24 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
         public String getPrefix() {
             return prefix;
+        }
+    }
+
+    private class DoyaTextViewContainer{
+        public TextView textView;
+        public String objectKey;
+
+        public DoyaTextViewContainer(TextView textView, String objectKey){
+            this.objectKey = objectKey;
+            this.textView = textView;
+        }
+
+        public String getObjectKey() {
+            return objectKey;
+        }
+
+        public TextView getTextView() {
+            return textView;
         }
     }
 
@@ -114,6 +133,11 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
         TextView textView = (TextView) convertView.findViewById(R.id.doyaPoint);
 //        textView.setText(item.getDoyaPoint().toString());
+        final DoyaTextViewContainer doyaTextViewContainer = new DoyaTextViewContainer(
+                textView,
+                item.getObjectKey()
+        );
+        new JedisGetPoint().execute(doyaTextViewContainer);
 
         return convertView;
     }
@@ -225,6 +249,89 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                        .getDoyaViewContainer()
                        .getImageView()
                        .setImageBitmap(result.getBitmap());
+            }
+        }
+    }
+
+    private class JedisResult{
+        TextView textView;
+        DoyaTextViewContainer doyaTextViewContainer;
+        Double point;
+        String errorMessage = null;
+
+        public void setPoint(Double point) {
+            this.point = point;
+        }
+
+        public void setTextView(TextView textView) {
+            this.textView = textView;
+        }
+
+        public void setErrorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
+
+        public void setDoyaTextViewContainer(DoyaTextViewContainer doyaTextViewContainer) {
+            this.doyaTextViewContainer = doyaTextViewContainer;
+        }
+
+        public TextView getTextView() {
+            return textView;
+        }
+
+        public Double getPoint() {
+            return point;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        public DoyaTextViewContainer getDoyaTextViewContainer() {
+            return doyaTextViewContainer;
+        }
+    }
+
+    private class JedisGetPoint extends AsyncTask<DoyaTextViewContainer, Void, JedisResult>{
+        Jedis jedis;
+
+        @Override
+        protected void onPreExecute() {
+            jedis = new Jedis(LOCALHOST);
+        }
+
+        @Override
+        protected JedisResult doInBackground(DoyaTextViewContainer... doyaTextViewContainers) {
+            JedisResult jedisResult = new JedisResult();
+            DoyaTextViewContainer container = doyaTextViewContainers[0];
+            jedisResult.setTextView(container.getTextView());
+            jedisResult.setDoyaTextViewContainer(container);
+            try{
+                Double point;
+                point = jedis.zscore("pictures", container.getObjectKey());
+//                point = jedis.zscore("img", "img_url1");
+                if(point == null){
+                    jedis.zadd("pictures", 0, container.getObjectKey());
+                    point = jedis.zscore("pictures", container.getObjectKey());
+                }
+
+                jedisResult.setPoint(point);
+            } catch (Exception e){
+                jedisResult.setErrorMessage("Jedis Error");
+            }
+
+            return jedisResult;
+        }
+
+        @Override
+        protected void onPostExecute(JedisResult jedisResult) {
+            if (jedisResult.getErrorMessage() != null){
+                Log.d("jedisGetPoint", jedisResult.getErrorMessage());
+            } else {
+                jedisResult
+                        .getDoyaTextViewContainer()
+                        .getTextView()
+                        .setText(jedisResult.getPoint().toString());
             }
         }
     }
