@@ -59,6 +59,9 @@ public class ImageListFragment extends Fragment {
     private ListView mListView;
     private ArrayAdapter<String> adapter;
 
+    private DoyaItemAdapter doyaAdapter;
+    private List<DoyaData> doyas = new ArrayList<DoyaData>();
+
     private AmazonS3Client s3Client;
     private String s3Bucket;
     private String s3BucketPrefix;
@@ -103,9 +106,15 @@ public class ImageListFragment extends Fragment {
         adapter = new ArrayAdapter<String>(
                 getActivity(), android.R.layout.simple_list_item_1, pictures);
 
-        mListView = (ListView)v.findViewById(R.id.list_view_s3);
-        mListView.setAdapter(adapter);
+//        doyas = new ArrayList<DoyaData>();
+//        doyas.add(new DoyaData());
 
+        doyaAdapter = new DoyaItemAdapter(getActivity(), android.R.layout.simple_list_item_1, doyas);
+
+        mListView = (ListView)v.findViewById(R.id.list_view_s3);
+//        mListView.setAdapter(adapter);
+
+        mListView.setAdapter(doyaAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -187,6 +196,7 @@ public class ImageListFragment extends Fragment {
         String errorMessage = null;
         Uri uri = null;
         private List<String> pictureList = new ArrayList<String>();
+        private List<DoyaData> doyaDataList = new ArrayList<DoyaData>();
         String key;
         Bitmap bitmap;
 
@@ -225,6 +235,10 @@ public class ImageListFragment extends Fragment {
         public Bitmap getBitmap() {
             return bitmap;
         }
+
+        public List<DoyaData> getDoyaDataList() {
+            return doyaDataList;
+        }
     }
     private ProgressDialog createProgressDialog(Context context, String msg) {
         ProgressDialog dialog = new ProgressDialog(context);
@@ -256,6 +270,9 @@ public class ImageListFragment extends Fragment {
                 for (S3ObjectSummary summery : summeries) {
                     if (!summery.getKey().equals(s3BucketPrefix)) {
                         result.getPictureList().add(summery.getKey());
+                        DoyaData doyaData = new DoyaData();
+                        doyaData.setObjectKey(summery.getKey());
+                        result.getDoyaDataList().add(doyaData);
                     }
                 }
             } catch (Exception exception) {
@@ -274,6 +291,8 @@ public class ImageListFragment extends Fragment {
             } else if (result.getPictureList().size() > 0) {
                 pictures.clear();
                 pictures.addAll(result.getPictureList());
+                doyas.clear();
+                doyas.addAll(result.getDoyaDataList());
                 adapter.notifyDataSetChanged();
             }
         }
