@@ -8,6 +8,7 @@
     <string name="ok">OK</string>
     <string name="uploading">Uploading…</string>
     <string name="s3_bucket">Doya</string>
+    <string name="s3_bucket_prefix">pictures/</string>
     <string name="title_activity_ranking">Ranking</string>
     <string name="title_activity_image_list">ImageList</string>
     <string name="upload_failure_title">Upload Failure</string>

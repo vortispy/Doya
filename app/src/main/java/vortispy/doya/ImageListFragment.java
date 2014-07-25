@@ -24,12 +24,14 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.Bucket;
+import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 
 /**
@@ -57,7 +59,12 @@ public class ImageListFragment extends Fragment {
     private ListView mListView;
     private ArrayAdapter<String> adapter;
 
+    private DoyaItemAdapter doyaAdapter;
+    private List<DoyaData> doyas = new ArrayList<DoyaData>();
+
     private AmazonS3Client s3Client;
+    private String s3Bucket;
+    private String s3BucketPrefix;
 
     /**
      * Use this factory method to create a new instance of
@@ -87,6 +94,8 @@ public class ImageListFragment extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
+        s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
     }
 
     @Override
@@ -97,13 +106,19 @@ public class ImageListFragment extends Fragment {
         adapter = new ArrayAdapter<String>(
                 getActivity(), android.R.layout.simple_list_item_1, pictures);
 
-        mListView = (ListView)v.findViewById(R.id.list_view_s3);
-        mListView.setAdapter(adapter);
+//        doyas = new ArrayList<DoyaData>();
+//        doyas.add(new DoyaData());
 
+        doyaAdapter = new DoyaItemAdapter(getActivity(), android.R.layout.simple_list_item_1, doyas);
+
+        mListView = (ListView)v.findViewById(R.id.list_view_s3);
+//        mListView.setAdapter(adapter);
+
+        mListView.setAdapter(doyaAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                new S3GetImageTask().execute(Constants.getBucket(), pictures.get(i));
+                new S3GetImageTask().execute(s3Bucket, pictures.get(i));
             }
         });
 
@@ -113,7 +128,7 @@ public class ImageListFragment extends Fragment {
                         getString(R.string.aws_secret_key)
                 ));
 
-        new S3GetImageListTask().execute(Constants.getBucket());
+        new S3GetImageListTask().execute(s3Bucket);
         // Inflate the layout for this fragment
         return v;
     }
@@ -181,6 +196,7 @@ public class ImageListFragment extends Fragment {
         String errorMessage = null;
         Uri uri = null;
         private List<String> pictureList = new ArrayList<String>();
+        private List<DoyaData> doyaDataList = new ArrayList<DoyaData>();
         String key;
         Bitmap bitmap;
 
@@ -219,6 +235,10 @@ public class ImageListFragment extends Fragment {
         public Bitmap getBitmap() {
             return bitmap;
         }
+
+        public List<DoyaData> getDoyaDataList() {
+            return doyaDataList;
+        }
     }
     private ProgressDialog createProgressDialog(Context context, String msg) {
         ProgressDialog dialog = new ProgressDialog(context);
@@ -243,12 +263,17 @@ public class ImageListFragment extends Fragment {
             try {
                 s3Client.setRegion(Region.getRegion(Regions.AP_NORTHEAST_1));
                 List<Bucket> buckets = s3Client.listBuckets();
-//                ObjectListing objectListing = s3Client.listObjects(
-//                        new ListObjectsRequest().withBucketName(params[0]));
-                ObjectListing objectListing = s3Client.listObjects(Constants.getBucket());
+
+                ObjectListing objectListing = s3Client.listObjects(params[0], s3BucketPrefix);
+
                 List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
                 for (S3ObjectSummary summery : summeries) {
-                    result.getPictureList().add(summery.getKey());
+                    if (!summery.getKey().equals(s3BucketPrefix)) {
+                        result.getPictureList().add(summery.getKey());
+                        DoyaData doyaData = new DoyaData();
+                        doyaData.setObjectKey(summery.getKey());
+                        result.getDoyaDataList().add(doyaData);
+                    }
                 }
             } catch (Exception exception) {
                 result.setErrorMessage(exception.getMessage());
@@ -266,6 +291,8 @@ public class ImageListFragment extends Fragment {
             } else if (result.getPictureList().size() > 0) {
                 pictures.clear();
                 pictures.addAll(result.getPictureList());
+                doyas.clear();
+                doyas.addAll(result.getDoyaDataList());
                 adapter.notifyDataSetChanged();
             }
         }
