@@ -8,8 +8,11 @@ import android.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ListView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import redis.clients.jedis.Jedis;
@@ -40,6 +43,10 @@ public class RankingFragment extends Fragment {
     final String LOCALHOST = "10.0.2.2";
 
     private View v;
+
+    private ListView listView;
+    private DoyaRankItemAdapter doyaRankItemAdapter;
+    private List<DoyaData> doyas = new ArrayList<DoyaData>();
 
     /**
      * Use this factory method to create a new instance of
@@ -74,12 +81,25 @@ public class RankingFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        GetRanking g = new GetRanking();
-        g.execute("point");
+//        GetRanking g = new GetRanking();
+//        g.execute("point");
+
+        View view = inflater.inflate(R.layout.fragment_ranking, container, false);
+
+        listView = (ListView) view.findViewById(R.id.rankListView);
+        doyaRankItemAdapter = new DoyaRankItemAdapter(
+                getActivity(),
+                android.R.layout.simple_list_item_1,
+                doyas
+        );
+
+        listView.setAdapter(doyaRankItemAdapter);
+
+        new GetRanking().execute("pictures");
         // Inflate the layout for this fragment
 
         v = inflater.inflate(R.layout.fragment_ranking, container, false);
-        return v;
+        return view;
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -123,16 +143,24 @@ public class RankingFragment extends Fragment {
         public void onFragmentInteraction(Uri uri);
     }
 
-    public class GetRanking extends AsyncTask<String,String, Set<Tuple>> {
+    public class GetRanking extends AsyncTask<String,String, List<DoyaData>> {
         Jedis jd = new Jedis(LOCALHOST);
         @Override
-        protected Set<Tuple> doInBackground(String... strings) {
-            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
-            return s;
+        protected List<DoyaData> doInBackground(String... strings) {
+//            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
+            List<DoyaData> doyaDatas = new ArrayList<DoyaData>();
+            Set<String> s = this.jd.zrange(strings[0], 0, 10);
+            for (String inner: s){
+                DoyaData doyaData = new DoyaData();
+                doyaData.setObjectKey(inner);
+                doyaDatas.add(doyaData);
+            }
+            return doyaDatas;
         }
 
         @Override
-        protected void onPostExecute(Set<Tuple> s) {
+        protected void onPostExecute(List<DoyaData> doyaDatas) {
+            /*
             TextView t = (TextView) v.findViewById(R.id.rankView);
             String text = "";
 
@@ -143,6 +171,10 @@ public class RankingFragment extends Fragment {
             }
             //t.setText(s.toString());
             t.setText(text);
+            */
+            doyas.clear();
+            doyas.addAll(doyaDatas);
+            doyaRankItemAdapter.notifyDataSetChanged();
         }
     }
 }
