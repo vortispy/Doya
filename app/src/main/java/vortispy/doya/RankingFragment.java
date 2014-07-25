@@ -149,7 +149,7 @@ public class RankingFragment extends Fragment {
         protected List<DoyaData> doInBackground(String... strings) {
 //            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
             List<DoyaData> doyaDatas = new ArrayList<DoyaData>();
-            Set<String> s = this.jd.zrange(strings[0], 0, 10);
+            Set<String> s = this.jd.zrevrange(strings[0], 0, 10);
             for (String inner: s){
                 DoyaData doyaData = new DoyaData();
                 doyaData.setObjectKey(inner);

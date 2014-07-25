@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -20,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import redis.clients.jedis.Jedis;
+
 /**
  * Created by vortispy on 2014/07/25.
  */
@@ -28,6 +31,7 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
     private AmazonS3Client s3Client;
 
     final String LOCALHOST = "10.0.2.2";
+    final String JEDIS_KEY = "pictures";
 
     public DoyaRankItemAdapter(Context context, int resource, List<DoyaData> items) {
         super(context, resource, items);
@@ -56,6 +60,7 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
         );
 
         new S3GetImage().execute(doyaViewContainer);
+        new JedisGetRank().execute(doyaViewContainer);
 
         return convertView;
     }
@@ -173,6 +178,49 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
                         .findViewById(R.id.rankImageView);
                 imageView.setImageBitmap(result.getBitmap());
             }
+        }
+    }
+
+    private class JedisGetRank extends AsyncTask<DoyaViewContainer, Void, DoyaViewContainer>{
+        Jedis jedis;
+
+        @Override
+        protected void onPreExecute() {
+            jedis = new Jedis(LOCALHOST);
+        }
+
+        @Override
+        protected DoyaViewContainer doInBackground(DoyaViewContainer... doyaViewContainers) {
+            DoyaViewContainer container = doyaViewContainers[0];
+            DoyaViewContainer result = container;
+
+            Integer rank = jedis.zrevrank(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();
+            Integer point = jedis.zscore(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();
+
+            result.getDoyaData().setDoyaPoint(point);
+            result.getDoyaData().setDoyaRank(rank);
+
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(DoyaViewContainer doyaViewContainer) {
+            TextView rankView = (TextView) doyaViewContainer
+                    .getConvertView()
+                    .findViewById(R.id.rankView);
+            TextView rankPointView = (TextView) doyaViewContainer
+                    .getConvertView()
+                    .findViewById(R.id.rankPointView);
+            Integer point = doyaViewContainer
+                    .getDoyaData()
+                    .getDoyaPoint();
+            Integer rank = doyaViewContainer
+                    .getDoyaData()
+                    .getDoyaRank();
+            rank++;
+
+            rankView.setText(rank.toString());
+            rankPointView.setText(point.toString() + "points");
         }
     }
 }

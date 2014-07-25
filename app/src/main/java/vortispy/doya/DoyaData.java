@@ -9,6 +9,7 @@ public class DoyaData {
     private Bitmap imageData;
     private String objectKey;
     private Integer doyaPoint;
+    private Integer doyaRank;
 
     public String url = "http://cdn-ak.f.st-hatena.com/images/fotolife/n/nobuoka/20130609/20130609001808.png";
 
@@ -24,6 +25,10 @@ public class DoyaData {
         this.objectKey = objectKey;
     }
 
+    public void setDoyaRank(Integer doyaRank) {
+        this.doyaRank = doyaRank;
+    }
+
     public Bitmap getImageData() {
         return imageData;
     }
@@ -34,5 +39,9 @@ public class DoyaData {
 
     public String getObjectKey() {
         return objectKey;
+    }
+
+    public Integer getDoyaRank() {
+        return doyaRank;
     }
 }
