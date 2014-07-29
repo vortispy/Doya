@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -38,6 +39,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     private ImageLoader imageLoader;
 
     final String LOCALHOST = "10.0.2.2";
+    final String JEDIS_KEY = "pictures";
 
     private class DoyaViewContainer{
         public ImageView imageView;
@@ -98,8 +100,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        DoyaData item = (DoyaData) getItem(position);
+    public View getView(final int position, View convertView, ViewGroup parent) {
+        final DoyaData item = (DoyaData) getItem(position);
 
         if(convertView == null){
             convertView = inflater.inflate(R.layout.item_container, null);
@@ -131,13 +133,31 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
         });
         */
 
-        TextView textView = (TextView) convertView.findViewById(R.id.doyaPoint);
+        final TextView textView = (TextView) convertView.findViewById(R.id.doyaPoint);
 //        textView.setText(item.getDoyaPoint().toString());
         final DoyaTextViewContainer doyaTextViewContainer = new DoyaTextViewContainer(
                 textView,
                 item.getObjectKey()
         );
         new JedisGetPoint().execute(doyaTextViewContainer);
+
+        Button plusOne = (Button) convertView.findViewById(R.id.plus_button);
+        Button minusOne = (Button) convertView.findViewById(R.id.minus_button);
+
+        plusOne.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new JedisPlusOne().execute(doyaTextViewContainer);
+            }
+        });
+
+        minusOne.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new JedisMinusOne().execute(doyaTextViewContainer);
+            }
+        });
+
 
         return convertView;
     }
@@ -308,11 +328,11 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             jedisResult.setDoyaTextViewContainer(container);
             try{
                 Double point;
-                point = jedis.zscore("pictures", container.getObjectKey());
+                point = jedis.zscore(JEDIS_KEY, container.getObjectKey());
 //                point = jedis.zscore("img", "img_url1");
                 if(point == null){
-                    jedis.zadd("pictures", 0, container.getObjectKey());
-                    point = jedis.zscore("pictures", container.getObjectKey());
+                    jedis.zadd(JEDIS_KEY, 0, container.getObjectKey());
+                    point = jedis.zscore(JEDIS_KEY, container.getObjectKey());
                 }
 
                 jedisResult.setPoint(point);
@@ -332,6 +352,94 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                         .getDoyaTextViewContainer()
                         .getTextView()
                         .setText(jedisResult.getPoint().toString());
+            }
+        }
+    }
+
+    private class JedisOneResult extends JedisResult{
+        DoyaData doyaData;
+
+        public void setDoyaData(DoyaData doyaData) {
+            this.doyaData = doyaData;
+        }
+
+        public DoyaData getDoyaData() {
+            return doyaData;
+        }
+    }
+
+    private class JedisPlusOne extends AsyncTask<DoyaTextViewContainer, Void, JedisOneResult>{
+        Jedis jedis;
+
+        @Override
+        protected void onPreExecute() {
+            jedis = new Jedis(LOCALHOST);
+        }
+
+        @Override
+        protected JedisOneResult doInBackground(DoyaTextViewContainer... doyaTextViewContainers) {
+            DoyaTextViewContainer doyaTextViewContainer = doyaTextViewContainers[0];
+            JedisOneResult result = new JedisOneResult();
+            DoyaData doyaData = new DoyaData();
+            result.setDoyaTextViewContainer(doyaTextViewContainer);
+            try{
+                Integer point = jedis.zincrby(JEDIS_KEY, 1, doyaTextViewContainer.getObjectKey()).intValue();
+                doyaData.setDoyaPoint(point);
+                result.setDoyaData(doyaData);
+            } catch (Exception e){
+                result.setErrorMessage("JedisPlusOne Error");
+            }
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(JedisOneResult jedisOneResult) {
+            if (jedisOneResult.getErrorMessage() != null){
+                Log.d("jedisPlus", jedisOneResult.getErrorMessage());
+            } else {
+                String point = jedisOneResult.getDoyaData().getDoyaPoint().toString();
+                jedisOneResult
+                        .getDoyaTextViewContainer()
+                        .getTextView()
+                        .setText(point);
+            }
+        }
+    }
+
+    private class JedisMinusOne extends AsyncTask<DoyaTextViewContainer, Void, JedisOneResult>{
+        Jedis jedis;
+
+        @Override
+        protected void onPreExecute() {
+            jedis = new Jedis(LOCALHOST);
+        }
+
+        @Override
+        protected JedisOneResult doInBackground(DoyaTextViewContainer... doyaTextViewContainers) {
+            DoyaTextViewContainer doyaTextViewContainer = doyaTextViewContainers[0];
+            JedisOneResult result = new JedisOneResult();
+            DoyaData doyaData = new DoyaData();
+            result.setDoyaTextViewContainer(doyaTextViewContainer);
+            try{
+                Integer point = jedis.zincrby(JEDIS_KEY, -1, doyaTextViewContainer.getObjectKey()).intValue();
+                doyaData.setDoyaPoint(point);
+                result.setDoyaData(doyaData);
+            } catch (Exception e){
+                result.setErrorMessage("JedisMinusOne Error");
+            }
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(JedisOneResult jedisOneResult) {
+            if (jedisOneResult.getErrorMessage() != null){
+                Log.d("jedisMinus", jedisOneResult.getErrorMessage());
+            } else {
+                String point = jedisOneResult.getDoyaData().getDoyaPoint().toString();
+                jedisOneResult
+                        .getDoyaTextViewContainer()
+                        .getTextView()
+                        .setText(point);
             }
         }
     }
