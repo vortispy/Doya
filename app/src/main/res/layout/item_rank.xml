@@ -1,34 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="200dp">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="200dp"
+    android:orientation="vertical"
+    >
+    <LinearLayout
+        android:layout_width="150dp"
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        android:layout_gravity="center_horizontal"
+        >
+        <ImageView
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:text="rankView"
+            android:id="@+id/rankView"
+            android:layout_gravity="left"
+            android:src="@drawable/rank01" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="rankPointView"
+            android:id="@+id/rankPointView"
+            android:layout_gravity="bottom"
+            />
+        </LinearLayout>
 
     <ImageView
         android:layout_width="150dp"
         android:layout_height="150dp"
         android:id="@+id/rankImageView"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_launcher" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="rankView"
-        android:id="@+id/rankView"
-        android:layout_alignParentTop="true"
-        android:layout_toRightOf="@+id/rankImageView"
-        android:layout_toEndOf="@+id/rankImageView"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="rankPointView"
-        android:id="@+id/rankPointView"
-        android:layout_below="@+id/rankView"
-        android:layout_toRightOf="@+id/rankImageView"
-        android:layout_toEndOf="@+id/rankImageView"
-        />
-</RelativeLayout>
+</LinearLayout>

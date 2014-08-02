@@ -1,8 +1,10 @@
 package vortispy.doya;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
@@ -183,6 +185,18 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
 
     private class JedisGetRank extends AsyncTask<DoyaViewContainer, Void, DoyaViewContainer>{
         Jedis jedis;
+        Integer rankImageArray[] = {
+                R.drawable.rank01,
+                R.drawable.rank02,
+                R.drawable.rank03,
+                R.drawable.rank04,
+                R.drawable.rank05,
+                R.drawable.rank06,
+                R.drawable.rank07,
+                R.drawable.rank08,
+                R.drawable.rank09,
+                R.drawable.rank10,
+        };
 
         @Override
         protected void onPreExecute() {
@@ -205,7 +219,7 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
 
         @Override
         protected void onPostExecute(DoyaViewContainer doyaViewContainer) {
-            TextView rankView = (TextView) doyaViewContainer
+            ImageView rankView = (ImageView) doyaViewContainer
                     .getConvertView()
                     .findViewById(R.id.rankView);
             TextView rankPointView = (TextView) doyaViewContainer
@@ -217,9 +231,12 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
             Integer rank = doyaViewContainer
                     .getDoyaData()
                     .getDoyaRank();
-            rank++;
+            Resources res = doyaViewContainer
+                    .getConvertView()
+                    .getResources();
+            Drawable drawable = res.getDrawable(rankImageArray[rank]);
 
-            rankView.setText(rank.toString());
+            rankView.setImageDrawable(drawable);
             rankPointView.setText(point.toString() + "points");
         }
     }

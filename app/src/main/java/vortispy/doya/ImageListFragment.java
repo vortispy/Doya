@@ -57,7 +57,6 @@ public class ImageListFragment extends Fragment {
 
     private List<String> pictures = new ArrayList<String>();
     private ListView mListView;
-    private ArrayAdapter<String> adapter;
 
     private DoyaItemAdapter doyaAdapter;
     private List<DoyaData> doyas = new ArrayList<DoyaData>();
@@ -96,6 +95,15 @@ public class ImageListFragment extends Fragment {
         }
         s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
         s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
+        doyaAdapter = new DoyaItemAdapter(getActivity(), android.R.layout.simple_list_item_1, doyas);
+
+        s3Client = new AmazonS3Client(
+                new BasicAWSCredentials(
+                        getString(R.string.aws_access_key),
+                        getString(R.string.aws_secret_key)
+                ));
+
+        new S3GetImageListTask().execute(s3Bucket);
     }
 
     @Override
@@ -103,14 +111,6 @@ public class ImageListFragment extends Fragment {
                              Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_image_list, container, false);
-        adapter = new ArrayAdapter<String>(
-                getActivity(), android.R.layout.simple_list_item_1, pictures);
-
-//        doyas = new ArrayList<DoyaData>();
-//        doyas.add(new DoyaData());
-
-        doyaAdapter = new DoyaItemAdapter(getActivity(), android.R.layout.simple_list_item_1, doyas);
-
         mListView = (ListView)v.findViewById(R.id.list_view_s3);
 //        mListView.setAdapter(adapter);
 
@@ -122,13 +122,6 @@ public class ImageListFragment extends Fragment {
             }
         });
 
-        s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(
-                        getString(R.string.aws_access_key),
-                        getString(R.string.aws_secret_key)
-                ));
-
-        new S3GetImageListTask().execute(s3Bucket);
         // Inflate the layout for this fragment
         return v;
     }
@@ -286,14 +279,12 @@ public class ImageListFragment extends Fragment {
             if (result.getErrorMessage() != null) {
                 displayErrorAlert("画像一覧を取得できませんでした",
                         result.getErrorMessage());
-                pictures.clear();
-                adapter.notifyDataSetChanged();
+
+                doyaAdapter.notifyDataSetChanged();
             } else if (result.getPictureList().size() > 0) {
-                pictures.clear();
-                pictures.addAll(result.getPictureList());
                 doyas.clear();
                 doyas.addAll(result.getDoyaDataList());
-                adapter.notifyDataSetChanged();
+                doyaAdapter.notifyDataSetChanged();
             }
         }
     }

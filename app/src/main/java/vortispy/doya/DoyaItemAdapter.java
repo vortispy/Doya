@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -141,8 +142,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
         );
         new JedisGetPoint().execute(doyaTextViewContainer);
 
-        Button plusOne = (Button) convertView.findViewById(R.id.plus_button);
-        Button minusOne = (Button) convertView.findViewById(R.id.minus_button);
+        ImageView plusOne = (ImageView) convertView.findViewById(R.id.plus_button);
+        ImageView minusOne = (ImageView) convertView.findViewById(R.id.minus_button);
 
         plusOne.setOnClickListener(new View.OnClickListener() {
             @Override
