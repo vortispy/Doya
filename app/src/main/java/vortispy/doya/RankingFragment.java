@@ -41,6 +41,9 @@ public class RankingFragment extends Fragment {
     private OnFragmentInteractionListener mListener;
 
     final String LOCALHOST = "10.0.2.2";
+    private String REDIS_HOST;
+    private Integer REDIS_PORT;
+    private String REDIS_PASSWORD;
 
     private View v;
 
@@ -76,6 +79,10 @@ public class RankingFragment extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+
+        REDIS_HOST = getString(R.string.redis_host);
+        REDIS_PASSWORD = getString(R.string.redis_password);
+        REDIS_PORT = Integer.valueOf(getString(R.string.redis_port));
     }
 
     @Override
@@ -144,9 +151,12 @@ public class RankingFragment extends Fragment {
     }
 
     public class GetRanking extends AsyncTask<String,String, List<DoyaData>> {
-        Jedis jd = new Jedis(LOCALHOST);
+        Jedis jd = new Jedis(REDIS_HOST, REDIS_PORT);
+
+
         @Override
         protected List<DoyaData> doInBackground(String... strings) {
+            jd.auth(REDIS_PASSWORD);
 //            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
             List<DoyaData> doyaDatas = new ArrayList<DoyaData>();
             Set<String> s = this.jd.zrevrange(strings[0], 0, 10);

@@ -46,6 +46,11 @@ public class MyActivity extends Activity {
 
     final String LOCALHOST = "10.0.2.2";// "10.0.2.2" is PC localhost
 
+    private String REDIS_HOST;
+    private Integer REDIS_PORT;
+    private String REDIS_PASSWORD;
+
+
     private final int REQUEST_GALLERY = 0;
     int nowId = 0;
 
@@ -89,6 +94,10 @@ public class MyActivity extends Activity {
                         getString(R.string.aws_access_key),
                         getString(R.string.aws_secret_key)
                 ));
+
+        REDIS_HOST = getString(R.string.redis_host);
+        REDIS_PASSWORD = getString(R.string.redis_password);
+        REDIS_PORT = Integer.valueOf(getString(R.string.redis_port));
 
     }
 
@@ -214,10 +223,13 @@ public class MyActivity extends Activity {
             dialog.show();
 
             objectKey = s3BucketPrefix + UUID.randomUUID().toString();
-            jedis = new Jedis(LOCALHOST);
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
         }
 
         protected S3TaskResult doInBackground(Uri... uris) {
+
+            jedis.auth(REDIS_PASSWORD);
+
 
             if (uris == null || uris.length != 1) {
                 return null;

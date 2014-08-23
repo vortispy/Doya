@@ -35,6 +35,11 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
     final String LOCALHOST = "10.0.2.2";
     final String JEDIS_KEY = "pictures";
 
+    private String REDIS_HOST;
+    private Integer REDIS_PORT;
+    private String REDIS_PASSWORD;
+
+
     public DoyaRankItemAdapter(Context context, int resource, List<DoyaData> items) {
         super(context, resource, items);
 
@@ -44,6 +49,10 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
                         context.getString(R.string.aws_access_key),
                         context.getString(R.string.aws_secret_key))
         );
+
+        REDIS_HOST = context.getString(R.string.redis_host);
+        REDIS_PASSWORD = context.getString(R.string.redis_password);
+        REDIS_PORT = Integer.valueOf(context.getString(R.string.redis_port));
     }
 
     @Override
@@ -200,13 +209,16 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
 
         @Override
         protected void onPreExecute() {
-            jedis = new Jedis(LOCALHOST);
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
+
         }
 
         @Override
         protected DoyaViewContainer doInBackground(DoyaViewContainer... doyaViewContainers) {
             DoyaViewContainer container = doyaViewContainers[0];
             DoyaViewContainer result = container;
+
+            jedis.auth(REDIS_PASSWORD);
 
             Integer rank = jedis.zrevrank(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();
             Integer point = jedis.zscore(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();

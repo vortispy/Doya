@@ -42,6 +42,10 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     final String LOCALHOST = "10.0.2.2";
     final String JEDIS_KEY = "pictures";
 
+    private String REDIS_HOST;
+    private Integer REDIS_PORT;
+    private String REDIS_PASSWORD;
+
     private class DoyaViewContainer{
         public ImageView imageView;
         public String bucket, prefix, key;
@@ -95,6 +99,10 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                         context.getString(R.string.aws_access_key),
                         context.getString(R.string.aws_secret_key))
         );
+
+        REDIS_HOST = context.getString(R.string.redis_host);
+        REDIS_PASSWORD = context.getString(R.string.redis_password);
+        REDIS_PORT = Integer.valueOf(context.getString(R.string.redis_port));
 
         this.requestQueue = Volley.newRequestQueue(context);
         this.imageLoader = new ImageLoader(requestQueue, new BitmapCache());
@@ -318,7 +326,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
         @Override
         protected void onPreExecute() {
-            jedis = new Jedis(LOCALHOST);
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
+
         }
 
         @Override
@@ -327,6 +336,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             DoyaTextViewContainer container = doyaTextViewContainers[0];
             jedisResult.setTextView(container.getTextView());
             jedisResult.setDoyaTextViewContainer(container);
+
+            jedis.auth(REDIS_PASSWORD);
             try{
                 Double point;
                 point = jedis.zscore(JEDIS_KEY, container.getObjectKey());
@@ -374,7 +385,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
         @Override
         protected void onPreExecute() {
-            jedis = new Jedis(LOCALHOST);
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
+
         }
 
         @Override
@@ -383,6 +395,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             JedisOneResult result = new JedisOneResult();
             DoyaData doyaData = new DoyaData();
             result.setDoyaTextViewContainer(doyaTextViewContainer);
+
+            jedis.auth(REDIS_PASSWORD);
             try{
                 Integer point = jedis.zincrby(JEDIS_KEY, 1, doyaTextViewContainer.getObjectKey()).intValue();
                 doyaData.setDoyaPoint(point);
@@ -412,7 +426,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
         @Override
         protected void onPreExecute() {
-            jedis = new Jedis(LOCALHOST);
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
+
         }
 
         @Override
@@ -421,6 +436,8 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             JedisOneResult result = new JedisOneResult();
             DoyaData doyaData = new DoyaData();
             result.setDoyaTextViewContainer(doyaTextViewContainer);
+
+            jedis.auth(REDIS_PASSWORD);
             try{
                 Integer point = jedis.zincrby(JEDIS_KEY, -1, doyaTextViewContainer.getObjectKey()).intValue();
                 doyaData.setDoyaPoint(point);

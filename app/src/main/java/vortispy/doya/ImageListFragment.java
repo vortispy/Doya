@@ -103,7 +103,7 @@ public class ImageListFragment extends Fragment {
                         getString(R.string.aws_secret_key)
                 ));
 
-        new S3GetImageListTask().execute(s3Bucket);
+
     }
 
     @Override
@@ -115,15 +115,15 @@ public class ImageListFragment extends Fragment {
 //        mListView.setAdapter(adapter);
 
         mListView.setAdapter(doyaAdapter);
-        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                new S3GetImageTask().execute(s3Bucket, pictures.get(i));
-            }
-        });
 
         // Inflate the layout for this fragment
         return v;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        new S3GetImageListTask().execute(s3Bucket);
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -265,7 +265,7 @@ public class ImageListFragment extends Fragment {
                         result.getPictureList().add(summery.getKey());
                         DoyaData doyaData = new DoyaData();
                         doyaData.setObjectKey(summery.getKey());
-                        result.getDoyaDataList().add(doyaData);
+                        result.getDoyaDataList().add(0, doyaData);
                     }
                 }
             } catch (Exception exception) {
