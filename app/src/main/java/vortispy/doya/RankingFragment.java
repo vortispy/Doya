@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -159,12 +160,24 @@ public class RankingFragment extends Fragment {
             jd.auth(REDIS_PASSWORD);
 //            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
             List<DoyaData> doyaDatas = new ArrayList<DoyaData>();
-            Set<String> s = this.jd.zrevrange(strings[0], 0, 10);
-            for (String inner: s){
+            Set<String> s = this.jd.zrevrange(strings[0], 0, 9);
+            Set<Tuple> withScore = jd.zrevrangeWithScores(strings[0], 0, 9);
+            Integer rank = 0;
+            for (Tuple tuple: withScore){
                 DoyaData doyaData = new DoyaData();
-                doyaData.setObjectKey(inner);
+                doyaData.setObjectKey(tuple.getElement());
+                doyaData.setDoyaRank(rank);
+                doyaData.setDoyaPoint((int) tuple.getScore());
                 doyaDatas.add(doyaData);
+                rank++;
             }
+//            for (String inner: s){
+//                DoyaData doyaData = new DoyaData();
+//                doyaData.setObjectKey(inner);
+//                doyaData.setDoyaRank(rank);
+//                doyaDatas.add(doyaData);
+//                rank++;
+//            }
             return doyaDatas;
         }
 

@@ -18,7 +18,12 @@ import android.widget.TextView;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+
 import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +44,18 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
 
+    Integer rankImageArray[] = {
+        R.drawable.rank01,
+                R.drawable.rank02,
+                R.drawable.rank03,
+                R.drawable.rank04,
+                R.drawable.rank05,
+                R.drawable.rank06,
+                R.drawable.rank07,
+                R.drawable.rank08,
+                R.drawable.rank09,
+                R.drawable.rank10,
+    };
 
     public DoyaRankItemAdapter(Context context, int resource, List<DoyaData> items) {
         super(context, resource, items);
@@ -53,6 +70,7 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
         REDIS_HOST = context.getString(R.string.redis_host);
         REDIS_PASSWORD = context.getString(R.string.redis_password);
         REDIS_PORT = Integer.valueOf(context.getString(R.string.redis_port));
+
     }
 
     @Override
@@ -70,8 +88,21 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
                 getContext().getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US)
         );
 
-        new S3GetImage().execute(doyaViewContainer);
-        new JedisGetRank().execute(doyaViewContainer);
+        ImageView rankView = (ImageView) convertView.findViewById(R.id.rankView);
+        TextView rankPointView = (TextView) convertView.findViewById(R.id.rankPointView);
+        Resources resources = convertView.getResources();
+        Drawable drawable = resources.getDrawable(rankImageArray[item.getDoyaRank()]);
+
+        rankView.setImageDrawable(drawable);
+        rankPointView.setText(item.getDoyaPoint().toString() + "points");
+
+        if(item.getImageData() == null) {
+            new S3GetImage().execute(doyaViewContainer);
+        } else{
+            ImageView imageView = (ImageView) convertView.findViewById(R.id.rankImageView);
+            imageView.setImageBitmap(item.getImageData());
+        }
+//        new JedisGetRank().execute(doyaViewContainer);
 
         return convertView;
     }
@@ -166,8 +197,14 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
             String bucket = container.getBucket();
             String objectKey = container.getDoyaData().getObjectKey();
             String objectPath = container.getPrefix() + objectKey;
+
+
             try{
-                InputStream inputStream = s3Client.getObject(bucket, objectKey).getObjectContent();
+                URL imgUrl = new URL("https://s3-ap-northeast-1.amazonaws.com/doya/" + objectKey);
+                InputStream inputStream = imgUrl.openStream();
+                Log.d("debug", imgUrl.toString());
+
+//                InputStream inputStream = s3Client.getObject(bucket, objectKey).getObjectContent();
                 Bitmap img = BitmapFactory.decodeStream(inputStream);
                 result.setKey(bucket + "/" + objectPath);
                 result.setBitmap(img);
@@ -183,11 +220,13 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
             if (result.getErrorMessage() != null) {
                 Log.d("debug", result.getErrorMessage());
             } else {
-                ImageView imageView = (ImageView) result
-                        .getDoyaViewContainer()
+                DoyaViewContainer container = result.getDoyaViewContainer();
+                ImageView imageView = (ImageView) container
                         .getConvertView()
                         .findViewById(R.id.rankImageView);
+
                 imageView.setImageBitmap(result.getBitmap());
+                container.getDoyaData().setImageData(result.getBitmap());
             }
         }
     }
@@ -208,16 +247,11 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
         };
 
         @Override
-        protected void onPreExecute() {
-            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
-
-        }
-
-        @Override
         protected DoyaViewContainer doInBackground(DoyaViewContainer... doyaViewContainers) {
             DoyaViewContainer container = doyaViewContainers[0];
             DoyaViewContainer result = container;
 
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
             jedis.auth(REDIS_PASSWORD);
 
             Integer rank = jedis.zrevrank(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();
