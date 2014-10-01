@@ -23,6 +23,7 @@ import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 
 import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,26 +35,25 @@ import redis.clients.jedis.Jedis;
  */
 public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     private LayoutInflater inflater;
-    private AmazonS3Client s3Client;
 
     private RequestQueue requestQueue;
     private ImageLoader imageLoader;
 
     final String LOCALHOST = "10.0.2.2";
-    final String JEDIS_KEY = "pictures";
 
     private String REDIS_HOST;
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
+    private String REDIS_SCORE_KEY;
 
     private class DoyaViewContainer{
         public ImageView imageView;
-        public String bucket, prefix, key;
-        public DoyaViewContainer(ImageView imageView, String bucket, String prefix, String key){
+        public String key;
+        public DoyaData doyaData;
+        public DoyaViewContainer(ImageView imageView, String key, DoyaData doyaData){
             this.imageView = imageView;
-            this.bucket = bucket;
-            this.prefix = prefix;
             this.key = key;
+            this.doyaData = doyaData;
         }
 
         public String getKey() {
@@ -64,22 +64,17 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             return imageView;
         }
 
-        public String getBucket() {
-            return bucket;
-        }
-
-        public String getPrefix() {
-            return prefix;
-        }
     }
 
     private class DoyaTextViewContainer{
         public TextView textView;
         public String objectKey;
+        public DoyaData doyaData;
 
-        public DoyaTextViewContainer(TextView textView, String objectKey){
+        public DoyaTextViewContainer(TextView textView, String objectKey, DoyaData doyaData){
             this.objectKey = objectKey;
             this.textView = textView;
+            this.doyaData = doyaData;
         }
 
         public String getObjectKey() {
@@ -94,15 +89,12 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     public DoyaItemAdapter(Context context, int resource, List<DoyaData> items) {
         super(context, resource, items);
         inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(
-                        context.getString(R.string.aws_access_key),
-                        context.getString(R.string.aws_secret_key))
-        );
 
         REDIS_HOST = context.getString(R.string.redis_host);
         REDIS_PASSWORD = context.getString(R.string.redis_password);
         REDIS_PORT = Integer.valueOf(context.getString(R.string.redis_port));
+        REDIS_SCORE_KEY = context.getString(R.string.redis_score_key);
+
 
         this.requestQueue = Volley.newRequestQueue(context);
         this.imageLoader = new ImageLoader(requestQueue, new BitmapCache());
@@ -120,11 +112,14 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
         final DoyaViewContainer doyaViewContainer = new DoyaViewContainer(
                 imageView,
-                getContext().getString(R.string.s3_bucket).toLowerCase(Locale.US),
-                getContext().getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US),
-                item.getObjectKey()
+                item.getObjectKey(),
+                item
                 );
-        new S3GetImage().execute(doyaViewContainer);
+        if(item.getImageData() == null) {
+            new S3GetImage().execute(doyaViewContainer);
+        } else{
+            imageView.setImageBitmap(item.getImageData());
+        }
         /*
         imageLoader.get(item.url, new ImageLoader.ImageListener() {
             @Override
@@ -146,9 +141,14 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 //        textView.setText(item.getDoyaPoint().toString());
         final DoyaTextViewContainer doyaTextViewContainer = new DoyaTextViewContainer(
                 textView,
-                item.getObjectKey()
+                item.getObjectKey(),
+                item
         );
-        new JedisGetPoint().execute(doyaTextViewContainer);
+        if(item.getDoyaPoint() == null) {
+            new JedisGetPoint().execute(doyaTextViewContainer);
+        } else{
+            textView.setText(item.getDoyaPoint().toString());
+        }
 
         ImageView plusOne = (ImageView) convertView.findViewById(R.id.plus_button);
         ImageView minusOne = (ImageView) convertView.findViewById(R.id.minus_button);
@@ -255,12 +255,12 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
         protected S3TaskResult doInBackground(DoyaViewContainer... doyaViewContainers) {
             S3TaskResult result = new S3TaskResult();
             DoyaViewContainer container = doyaViewContainers[0];
-            String bucket = container.getBucket();
-            String objectPath = container.getPrefix() + container.getKey();
+            String objectPath = container.getKey();
             try{
-                InputStream inputStream = s3Client.getObject(bucket, container.getKey()).getObjectContent();
+                URL imgURL = new URL(objectPath);
+                InputStream inputStream = imgURL.openStream();
                 Bitmap img = BitmapFactory.decodeStream(inputStream);
-                result.setKey(bucket + "/" + objectPath);
+                result.setKey(objectPath);
                 result.setBitmap(img);
                 result.setDoyaViewContainer(container);
             } catch (Exception exception) {
@@ -274,7 +274,9 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             if (result.getErrorMessage() != null) {
                Log.d("debug", result.getErrorMessage());
             } else {
-               result
+                DoyaViewContainer container = result.getDoyaViewContainer();
+                container.doyaData.setImageData(result.getBitmap());
+                result
                        .getDoyaViewContainer()
                        .getImageView()
                        .setImageBitmap(result.getBitmap());
@@ -285,10 +287,10 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     private class JedisResult{
         TextView textView;
         DoyaTextViewContainer doyaTextViewContainer;
-        Double point;
+        Integer point;
         String errorMessage = null;
 
-        public void setPoint(Double point) {
+        public void setPoint(Integer point) {
             this.point = point;
         }
 
@@ -308,7 +310,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             return textView;
         }
 
-        public Double getPoint() {
+        public Integer getPoint() {
             return point;
         }
 
@@ -340,14 +342,15 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             jedis.auth(REDIS_PASSWORD);
             try{
                 Double point;
-                point = jedis.zscore(JEDIS_KEY, container.getObjectKey());
-//                point = jedis.zscore("img", "img_url1");
+                point = jedis.zscore(REDIS_SCORE_KEY, container.getObjectKey());
+
                 if(point == null){
-                    jedis.zadd(JEDIS_KEY, 0, container.getObjectKey());
-                    point = jedis.zscore(JEDIS_KEY, container.getObjectKey());
+                    Log.d("redis/zscore", "can not get score");
+                    jedis.zadd(REDIS_SCORE_KEY, 0, container.getObjectKey());
+                    point = 0.0;
                 }
 
-                jedisResult.setPoint(point);
+                jedisResult.setPoint(point.intValue());
             } catch (Exception e){
                 jedisResult.setErrorMessage("Jedis Error");
             }
@@ -360,10 +363,13 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             if (jedisResult.getErrorMessage() != null){
                 Log.d("jedisGetPoint", jedisResult.getErrorMessage());
             } else {
-                jedisResult
-                        .getDoyaTextViewContainer()
+                DoyaTextViewContainer container = jedisResult.getDoyaTextViewContainer();
+                Integer point = jedisResult.getPoint();
+
+                container.doyaData.setDoyaPoint(point);
+                container
                         .getTextView()
-                        .setText(jedisResult.getPoint().toString());
+                        .setText(point.toString());
             }
         }
     }
@@ -398,7 +404,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
             jedis.auth(REDIS_PASSWORD);
             try{
-                Integer point = jedis.zincrby(JEDIS_KEY, 1, doyaTextViewContainer.getObjectKey()).intValue();
+                Integer point = jedis.zincrby(REDIS_SCORE_KEY, 1, doyaTextViewContainer.getObjectKey()).intValue();
                 doyaData.setDoyaPoint(point);
                 result.setDoyaData(doyaData);
             } catch (Exception e){
@@ -439,7 +445,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
 
             jedis.auth(REDIS_PASSWORD);
             try{
-                Integer point = jedis.zincrby(JEDIS_KEY, -1, doyaTextViewContainer.getObjectKey()).intValue();
+                Integer point = jedis.zincrby(REDIS_SCORE_KEY, -1, doyaTextViewContainer.getObjectKey()).intValue();
                 doyaData.setDoyaPoint(point);
                 result.setDoyaData(doyaData);
             } catch (Exception e){

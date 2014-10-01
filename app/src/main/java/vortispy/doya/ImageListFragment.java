@@ -6,7 +6,6 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -14,24 +13,13 @@ import android.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.ListView;
 
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.ListObjectsRequest;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
-
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
+
+import redis.clients.jedis.Jedis;
 
 
 /**
@@ -61,9 +49,12 @@ public class ImageListFragment extends Fragment {
     private DoyaItemAdapter doyaAdapter;
     private List<DoyaData> doyas = new ArrayList<DoyaData>();
 
-    private AmazonS3Client s3Client;
-    private String s3Bucket;
-    private String s3BucketPrefix;
+    private String REDIS_HOST;
+    private Integer REDIS_PORT;
+    private String REDIS_PASSWORD;
+    private String REDIS_FILE_LIST_KEY;
+    private String REDIS_SCORE_KEY;
+
 
     /**
      * Use this factory method to create a new instance of
@@ -93,17 +84,14 @@ public class ImageListFragment extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
-        s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
-        s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
+
         doyaAdapter = new DoyaItemAdapter(getActivity(), android.R.layout.simple_list_item_1, doyas);
 
-        s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(
-                        getString(R.string.aws_access_key),
-                        getString(R.string.aws_secret_key)
-                ));
-
-
+        REDIS_HOST = getString(R.string.redis_host);
+        REDIS_PORT = Integer.valueOf(getString(R.string.redis_port));
+        REDIS_PASSWORD = getString(R.string.redis_password);
+        REDIS_FILE_LIST_KEY = getString(R.string.redis_file_list_key);
+        REDIS_SCORE_KEY = getString(R.string.redis_score_key);
     }
 
     @Override
@@ -123,7 +111,7 @@ public class ImageListFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        new S3GetImageListTask().execute(s3Bucket);
+        new S3GetImageListTask().execute();
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -241,32 +229,29 @@ public class ImageListFragment extends Fragment {
     }
 
     private class S3GetImageListTask extends
-            AsyncTask<String, Void, S3TaskResult> {
+            AsyncTask<Void,Void,S3TaskResult> {
 
         ProgressDialog dialog;
+        Jedis jd;
 
         protected void onPreExecute() {
             dialog = createProgressDialog(getActivity(), "画像一覧を取得中...");
             dialog.show();
+            jd = new Jedis(REDIS_HOST, REDIS_PORT);
         }
 
-        protected S3TaskResult doInBackground(String... params) {
+        protected S3TaskResult doInBackground(Void... params) {
 
             S3TaskResult result = new S3TaskResult();
+            jd.auth(REDIS_PASSWORD);
             try {
-                s3Client.setRegion(Region.getRegion(Regions.AP_NORTHEAST_1));
-                List<Bucket> buckets = s3Client.listBuckets();
+                Set<String> fileNames = jd.zrevrange(REDIS_FILE_LIST_KEY, 0, 10);
 
-                ObjectListing objectListing = s3Client.listObjects(params[0], s3BucketPrefix);
-
-                List<S3ObjectSummary> summeries = objectListing.getObjectSummaries();
-                for (S3ObjectSummary summery : summeries) {
-                    if (!summery.getKey().equals(s3BucketPrefix)) {
-                        result.getPictureList().add(summery.getKey());
-                        DoyaData doyaData = new DoyaData();
-                        doyaData.setObjectKey(summery.getKey());
-                        result.getDoyaDataList().add(0, doyaData);
-                    }
+                for (String name : fileNames) {
+                    result.getPictureList().add(name);
+                    DoyaData doyaData = new DoyaData();
+                    doyaData.setObjectKey(name);
+                    result.getDoyaDataList().add(0, doyaData);
                 }
             } catch (Exception exception) {
                 result.setErrorMessage(exception.getMessage());
@@ -289,58 +274,4 @@ public class ImageListFragment extends Fragment {
         }
     }
 
-    protected class S3GetImageTask extends
-            AsyncTask<String, Void, S3TaskResult> {
-
-        ProgressDialog dialog;
-
-        protected void onPreExecute() {
-            dialog = createProgressDialog(getActivity(), "画像を取得中...");
-            dialog.show();
-        }
-
-        /**
-         * 指定した画像を S3 から取得.
-         * @param params [0]:バケット名, [1]:オブジェクト名
-         */
-        protected S3TaskResult doInBackground(String... params) {
-            S3TaskResult result = new S3TaskResult();
-            try {
-                InputStream in = s3Client.getObject(params[0], params[1])
-                        .getObjectContent();
-                Bitmap img = BitmapFactory.decodeStream(in);
-                result.setKey(params[0] + "/" + params[1]);
-                result.setBitmap(img);
-            } catch (Exception exception) {
-                result.setErrorMessage(exception.getMessage());
-            }
-            return result;
-        }
-
-        /**
-         * 非同期処理終了後に実行される.
-         * 取得した画像ファイルをダイアログで表示する.
-         */
-        protected void onPostExecute(S3TaskResult result) {
-            dialog.dismiss();
-            if (result.getErrorMessage() != null) {
-                displayErrorAlert("画像ファイルが取得できませんでした",
-                        result.getErrorMessage());
-            } else {
-                ImageView imgView = new ImageView(getActivity());
-                imgView.setImageBitmap(result.getBitmap());
-                AlertDialog dialog = new AlertDialog.Builder(getActivity())
-                        .setTitle(result.getKey())
-                        .setView(imgView)
-                        .setPositiveButton("OK",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog,
-                                                        int which) {
-                                    }
-                                }).create();
-                dialog.show();
-            }
-        }
-    }
 }
