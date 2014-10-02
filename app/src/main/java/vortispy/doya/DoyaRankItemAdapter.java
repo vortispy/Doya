@@ -35,10 +35,8 @@ import redis.clients.jedis.Jedis;
  */
 public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
     private LayoutInflater inflater;
-    private AmazonS3Client s3Client;
 
     final String LOCALHOST = "10.0.2.2";
-    final String JEDIS_KEY = "pictures";
 
     private String REDIS_HOST;
     private Integer REDIS_PORT;
@@ -46,26 +44,21 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
 
     Integer rankImageArray[] = {
         R.drawable.rank01,
-                R.drawable.rank02,
-                R.drawable.rank03,
-                R.drawable.rank04,
-                R.drawable.rank05,
-                R.drawable.rank06,
-                R.drawable.rank07,
-                R.drawable.rank08,
-                R.drawable.rank09,
-                R.drawable.rank10,
+        R.drawable.rank02,
+        R.drawable.rank03,
+        R.drawable.rank04,
+        R.drawable.rank05,
+        R.drawable.rank06,
+        R.drawable.rank07,
+        R.drawable.rank08,
+        R.drawable.rank09,
+        R.drawable.rank10,
     };
 
     public DoyaRankItemAdapter(Context context, int resource, List<DoyaData> items) {
         super(context, resource, items);
 
         inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(
-                        context.getString(R.string.aws_access_key),
-                        context.getString(R.string.aws_secret_key))
-        );
 
         REDIS_HOST = context.getString(R.string.redis_host);
         REDIS_PASSWORD = context.getString(R.string.redis_password);
@@ -83,9 +76,7 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
 
         DoyaViewContainer doyaViewContainer = new DoyaViewContainer(
                 convertView,
-                item,
-                getContext().getString(R.string.s3_bucket).toLowerCase(Locale.US),
-                getContext().getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US)
+                item
         );
 
         ImageView rankView = (ImageView) convertView.findViewById(R.id.rankView);
@@ -102,7 +93,6 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
             ImageView imageView = (ImageView) convertView.findViewById(R.id.rankImageView);
             imageView.setImageBitmap(item.getImageData());
         }
-//        new JedisGetRank().execute(doyaViewContainer);
 
         return convertView;
     }
@@ -110,12 +100,10 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
     private class DoyaViewContainer{
         View convertView;
         DoyaData doyaData;
-        String bucket, prefix;
-        public DoyaViewContainer(View convertView, DoyaData doyaData, String bucket, String prefix){
+
+        public DoyaViewContainer(View convertView, DoyaData doyaData){
             this.convertView = convertView;
             this.doyaData = doyaData;
-            this.bucket = bucket;
-            this.prefix = prefix;
         }
 
         public DoyaData getDoyaData() {
@@ -126,13 +114,6 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
             return convertView;
         }
 
-        public String getBucket() {
-            return bucket;
-        }
-
-        public String getPrefix() {
-            return prefix;
-        }
     }
 
     private class S3TaskResult {
@@ -194,19 +175,16 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
         protected S3TaskResult doInBackground(DoyaViewContainer... doyaViewContainers) {
             S3TaskResult result = new S3TaskResult();
             DoyaViewContainer container = doyaViewContainers[0];
-            String bucket = container.getBucket();
             String objectKey = container.getDoyaData().getObjectKey();
-            String objectPath = container.getPrefix() + objectKey;
 
 
             try{
-                URL imgUrl = new URL("https://s3-ap-northeast-1.amazonaws.com/doya/" + objectKey);
+                URL imgUrl = new URL(objectKey);
                 InputStream inputStream = imgUrl.openStream();
                 Log.d("debug", imgUrl.toString());
 
-//                InputStream inputStream = s3Client.getObject(bucket, objectKey).getObjectContent();
                 Bitmap img = BitmapFactory.decodeStream(inputStream);
-                result.setKey(bucket + "/" + objectPath);
+                result.setKey(objectKey);
                 result.setBitmap(img);
                 result.setDoyaViewContainer(container);
             } catch (Exception exception) {
@@ -231,59 +209,4 @@ public class DoyaRankItemAdapter extends ArrayAdapter<DoyaData> {
         }
     }
 
-    private class JedisGetRank extends AsyncTask<DoyaViewContainer, Void, DoyaViewContainer>{
-        Jedis jedis;
-        Integer rankImageArray[] = {
-                R.drawable.rank01,
-                R.drawable.rank02,
-                R.drawable.rank03,
-                R.drawable.rank04,
-                R.drawable.rank05,
-                R.drawable.rank06,
-                R.drawable.rank07,
-                R.drawable.rank08,
-                R.drawable.rank09,
-                R.drawable.rank10,
-        };
-
-        @Override
-        protected DoyaViewContainer doInBackground(DoyaViewContainer... doyaViewContainers) {
-            DoyaViewContainer container = doyaViewContainers[0];
-            DoyaViewContainer result = container;
-
-            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
-            jedis.auth(REDIS_PASSWORD);
-
-            Integer rank = jedis.zrevrank(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();
-            Integer point = jedis.zscore(JEDIS_KEY, result.getDoyaData().getObjectKey()).intValue();
-
-            result.getDoyaData().setDoyaPoint(point);
-            result.getDoyaData().setDoyaRank(rank);
-
-            return result;
-        }
-
-        @Override
-        protected void onPostExecute(DoyaViewContainer doyaViewContainer) {
-            ImageView rankView = (ImageView) doyaViewContainer
-                    .getConvertView()
-                    .findViewById(R.id.rankView);
-            TextView rankPointView = (TextView) doyaViewContainer
-                    .getConvertView()
-                    .findViewById(R.id.rankPointView);
-            Integer point = doyaViewContainer
-                    .getDoyaData()
-                    .getDoyaPoint();
-            Integer rank = doyaViewContainer
-                    .getDoyaData()
-                    .getDoyaRank();
-            Resources res = doyaViewContainer
-                    .getConvertView()
-                    .getResources();
-            Drawable drawable = res.getDrawable(rankImageArray[rank]);
-
-            rankView.setImageDrawable(drawable);
-            rankPointView.setText(point.toString() + "points");
-        }
-    }
 }
