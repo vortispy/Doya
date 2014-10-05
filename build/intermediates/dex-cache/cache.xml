@@ -2,11 +2,29 @@
 <pre-dex-items>
 
     <item
+        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/httpmime-4.3.5-7e441a2f2dda5dd50a4d8ec7001950f2b214e8f7.jar"
+        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/org.apache.httpcomponents/httpmime/4.3.5/1dd0d38df9c6d21e893f2e52403f1cd99e91cd81/httpmime-4.3.5.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="1dd0d38df9c6d21e893f2e52403f1cd99e91cd81"/>
+    <item
+        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/httpcore-4.3.2-9120ec164196e9cc21c56c3fa1b39017d84b910f.jar"
+        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/org.apache.httpcomponents/httpcore/4.3.2/31fbbff1ddbf98f3aa7377c94d33b0447c646b6e/httpcore-4.3.2.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="31fbbff1ddbf98f3aa7377c94d33b0447c646b6e"/>
+    <item
         dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/aws-android-sdk-1.7.1.1-s3-b56f371725e199cd7d3e461f3b1603336e719730.jar"
         jar="/Users/vortispy/Documents/android/Doya/app/libs/aws-android-sdk-1.7.1.1-s3.jar"
         jumboMode="false"
         revision="20.0.0"
         sha1="fe79f292dc7f04ef5c0f18a65b7d52202b7bbb42"/>
+    <item
+        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/apache-mime4j-core-0.7.2-56cbca9a6a1bd8a3280f1312f90ae31679d8ed7a.jar"
+        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/org.apache.james/apache-mime4j-core/0.7.2/a81264fe0265ebe8fd1d8128aad06dc320de6eef/apache-mime4j-core-0.7.2.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="a81264fe0265ebe8fd1d8128aad06dc320de6eef"/>
     <item
         dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/commons-pool2-2.0-55f471bf58ab3fbafaa58f8e9e9cd2f7f0c654eb.jar"
         jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-pool2/2.0/4f8826f7a470c31f5089d73e3afa0d6761dc1b79/commons-pool2-2.0.jar"
