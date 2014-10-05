@@ -326,8 +326,12 @@ public class MyActivity extends Activity {
                 resBody = new String(res, "UTF-8");
                 Log.d("httpCon", resBody);
                 long now = new Date().getTime();
-                jedis.zadd(REDIS_SCORE_KEY, 0, resBody);
-                jedis.zadd(REDIS_FILE_LIST_KEY, now, resBody);
+                if (statusCode == 200) {
+                    jedis.zadd(REDIS_SCORE_KEY, 0, resBody);
+                    jedis.zadd(REDIS_FILE_LIST_KEY, now, resBody);
+                } else{
+                    result.setErrorMessage("Sippai");
+                }
 
             } catch (MalformedURLException e) {
                 e.printStackTrace();
