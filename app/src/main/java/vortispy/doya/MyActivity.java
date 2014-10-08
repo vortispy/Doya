@@ -4,71 +4,35 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.Toast;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
-
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
 
 import redis.clients.jedis.Jedis;
 
 
 public class MyActivity extends Activity {
-    private List<String> pictures = new ArrayList<String>();
-    private ListView mListView;
-    private ArrayAdapter<String> adapter;
-
-    private AmazonS3Client s3Client;
-
-    final String LOCALHOST = "10.0.2.2";// "10.0.2.2" is PC localhost
-
     private String REDIS_HOST;
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
@@ -77,18 +41,12 @@ public class MyActivity extends Activity {
 
 
     private final int REQUEST_GALLERY = 0;
-    int nowId = 0;
-
-    private String s3Bucket;
-    private String s3BucketPrefix;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_frame);
 
-        s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
-        s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
 
         final ActionBar actionBar = getActionBar();
         assert actionBar != null;
@@ -114,11 +72,6 @@ public class MyActivity extends Activity {
                             RankingFragment.class
                     )
             ));
-        s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(
-                        getString(R.string.aws_access_key),
-                        getString(R.string.aws_secret_key)
-                ));
 
         REDIS_HOST = getString(R.string.redis_host);
         REDIS_PASSWORD = getString(R.string.redis_password);
@@ -184,38 +137,6 @@ public class MyActivity extends Activity {
         public void onFragmentInteraction(Uri uri);
     }
 
-    protected boolean s3doesKeyExist(String key){
-        try{
-            s3Client.getObject(s3Bucket, key);
-        } catch(AmazonServiceException e){
-            String errorCode = e.getErrorCode();
-            if(!errorCode.equals("NoSuchKey")){
-                throw e;
-            }
-            return false;
-        }
-        return true;
-    }
-
-    // Display an Alert message for an error or failure.
-    protected void displayAlert(String title, String message) {
-
-        AlertDialog.Builder confirm = new AlertDialog.Builder(this);
-        confirm.setTitle(title);
-        confirm.setMessage(message);
-
-        confirm.setNegativeButton(
-                MyActivity.this.getString(R.string.ok),
-                new DialogInterface.OnClickListener() {
-
-                    public void onClick(DialogInterface dialog, int which) {
-
-                        dialog.dismiss();
-                    }
-                });
-
-        confirm.show().show();
-    }
 
     protected void displayErrorAlert(String title, String message) {
 
@@ -273,7 +194,6 @@ public class MyActivity extends Activity {
     private class S3PutObjectTask extends AsyncTask<Bitmap,Void,S3TaskResult> {
 
         ProgressDialog dialog;
-        String objectKey;
         Jedis jedis;
 
         protected void onPreExecute() {
@@ -283,7 +203,6 @@ public class MyActivity extends Activity {
             dialog.setCancelable(false);
             dialog.show();
 
-            objectKey = s3BucketPrefix + UUID.randomUUID().toString();
             jedis = new Jedis(REDIS_HOST, REDIS_PORT);
         }
 
@@ -309,8 +228,6 @@ public class MyActivity extends Activity {
                 return result;
             }
 
-            HttpClient httpClient = new DefaultHttpClient();
-            HttpPost httpPost = new HttpPost("http://ds-s3-uploader.herokuapp.com/upload");
             HttpURLConnection httpURLConnection = null;
             int statusCode;
             String resBody;

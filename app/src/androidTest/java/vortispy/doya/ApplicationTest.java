@@ -1,13 +1,11 @@
 package vortispy.doya;
 
-import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ThumbnailUtils;
 import android.os.Environment;
-import android.test.ActivityInstrumentationTestCase2;
 import android.test.ApplicationTestCase;
 import android.util.Log;
 
