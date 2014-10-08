@@ -4,66 +4,49 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.provider.OpenableColumns;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.Toast;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
 
 import redis.clients.jedis.Jedis;
 
 
 public class MyActivity extends Activity {
-    private List<String> pictures = new ArrayList<String>();
-    private ListView mListView;
-    private ArrayAdapter<String> adapter;
-
-    private AmazonS3Client s3Client;
-
-    final String LOCALHOST = "10.0.2.2";// "10.0.2.2" is PC localhost
-
     private String REDIS_HOST;
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
+    private String REDIS_FILE_LIST_KEY;
+    private String REDIS_SCORE_KEY;
 
 
     private final int REQUEST_GALLERY = 0;
-    int nowId = 0;
-
-    private String s3Bucket;
-    private String s3BucketPrefix;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_frame);
 
-        s3Bucket = getString(R.string.s3_bucket).toLowerCase(Locale.US);
-        s3BucketPrefix = getString(R.string.s3_bucket_prefix).toLowerCase(Locale.US);
 
         final ActionBar actionBar = getActionBar();
         assert actionBar != null;
@@ -89,15 +72,12 @@ public class MyActivity extends Activity {
                             RankingFragment.class
                     )
             ));
-        s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(
-                        getString(R.string.aws_access_key),
-                        getString(R.string.aws_secret_key)
-                ));
 
         REDIS_HOST = getString(R.string.redis_host);
         REDIS_PASSWORD = getString(R.string.redis_password);
         REDIS_PORT = Integer.valueOf(getString(R.string.redis_port));
+        REDIS_FILE_LIST_KEY = getString(R.string.redis_file_list_key);
+        REDIS_SCORE_KEY = getString(R.string.redis_score_key);
 
     }
 
@@ -146,7 +126,7 @@ public class MyActivity extends Activity {
 
             if (img != null) {
                 // upload image
-                new S3PutObjectTask().execute(exifData);
+                new S3PutObjectTask().execute(img);
             }else{
                 Toast.makeText(this, "error!", Toast.LENGTH_SHORT).show();
             }
@@ -157,38 +137,6 @@ public class MyActivity extends Activity {
         public void onFragmentInteraction(Uri uri);
     }
 
-    protected boolean s3doesKeyExist(String key){
-        try{
-            s3Client.getObject(s3Bucket, key);
-        } catch(AmazonServiceException e){
-            String errorCode = e.getErrorCode();
-            if(!errorCode.equals("NoSuchKey")){
-                throw e;
-            }
-            return false;
-        }
-        return true;
-    }
-
-    // Display an Alert message for an error or failure.
-    protected void displayAlert(String title, String message) {
-
-        AlertDialog.Builder confirm = new AlertDialog.Builder(this);
-        confirm.setTitle(title);
-        confirm.setMessage(message);
-
-        confirm.setNegativeButton(
-                MyActivity.this.getString(R.string.ok),
-                new DialogInterface.OnClickListener() {
-
-                    public void onClick(DialogInterface dialog, int which) {
-
-                        dialog.dismiss();
-                    }
-                });
-
-        confirm.show().show();
-    }
 
     protected void displayErrorAlert(String title, String message) {
 
@@ -209,10 +157,43 @@ public class MyActivity extends Activity {
         confirm.show().show();
     }
 
-    private class S3PutObjectTask extends AsyncTask<Uri, Void, S3TaskResult> {
+    public int minimum(int a, int b){
+        if(a <= b){
+            return a;
+        }
+        return b;
+    }
+
+    private Bitmap squareBitmap(Bitmap bitmap){
+        int minwh = minimum(bitmap.getWidth(), bitmap.getHeight());
+        return ThumbnailUtils.extractThumbnail(bitmap, minwh, minwh);
+    }
+
+    private Bitmap resizeSquareBitmap(Bitmap bitmap, int x){
+        Bitmap square = squareBitmap(bitmap);
+        return ThumbnailUtils.extractThumbnail(square, x, x);
+    }
+
+    private byte[] reduceBitmapSize(Bitmap bitmap, int maxSize){
+        int byteLength;
+        int quality = 100;
+        byte[] reduced;
+        do{
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos);
+            reduced = baos.toByteArray();
+            byteLength = reduced.length;
+            quality -= 5;
+        }while(maxSize < byteLength);
+        if(quality < 50){
+            return null;
+        }
+        return reduced;
+    }
+
+    private class S3PutObjectTask extends AsyncTask<Bitmap,Void,S3TaskResult> {
 
         ProgressDialog dialog;
-        String objectKey;
         Jedis jedis;
 
         protected void onPreExecute() {
@@ -222,71 +203,63 @@ public class MyActivity extends Activity {
             dialog.setCancelable(false);
             dialog.show();
 
-            objectKey = s3BucketPrefix + UUID.randomUUID().toString();
             jedis = new Jedis(REDIS_HOST, REDIS_PORT);
         }
 
-        protected S3TaskResult doInBackground(Uri... uris) {
+        protected S3TaskResult doInBackground(Bitmap... uris) {
 
             jedis.auth(REDIS_PASSWORD);
 
+            S3TaskResult result = new S3TaskResult();
 
             if (uris == null || uris.length != 1) {
                 return null;
             }
 
             // The file location of the image selected.
-            Uri selectedImage = uris[0];
+            int imageX = 600;
+            int maxImageSize = 1024 * 1024;
+            Bitmap selectedImage = uris[0];
 
-
-            ContentResolver resolver = getContentResolver();
-            String fileSizeColumn[] = {OpenableColumns.SIZE};
-
-            Cursor cursor = resolver.query(selectedImage,
-                    fileSizeColumn, null, null, null);
-
-            cursor.moveToFirst();
-
-            int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
-            // If the size is unknown, the value stored is null.  But since an int can't be
-            // null in java, the behavior is implementation-specific, which is just a fancy
-            // term for "unpredictable".  So as a rule, check if it's null before assigning
-            // to an int.  This will happen often:  The storage API allows for remote
-            // files, whose size might not be locally known.
-            String size = null;
-            if (!cursor.isNull(sizeIndex)) {
-                // Technically the column stores an int, but cursor.getString will do the
-                // conversion automatically.
-                size = cursor.getString(sizeIndex);
+            Bitmap square = resizeSquareBitmap(selectedImage, imageX);
+            byte[] bytes = reduceBitmapSize(square, maxImageSize);
+            if (bytes == null) {
+                result.setErrorMessage("Too large image size, or valid image");
+                return result;
             }
 
-            cursor.close();
-
-            ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentType(resolver.getType(selectedImage));
-            if(size != null){
-                metadata.setContentLength(Long.parseLong(size));
-            }
-
-            S3TaskResult result = new S3TaskResult();
-
-            // Put the image data into S3.
+            HttpURLConnection httpURLConnection = null;
+            int statusCode;
+            String resBody;
             try {
-                if(!s3Client.doesBucketExist(s3Bucket)){
-                    s3Client.createBucket(s3Bucket);
-                }
-                if(s3doesKeyExist(objectKey)){
-                   throw new AmazonServiceException("This key has already exist: " + objectKey);
+                URL url = new URL("http://ds-s3-uploader.herokuapp.com/upload");
+                httpURLConnection = (HttpURLConnection) url.openConnection();
+                httpURLConnection.setRequestMethod("POST");
+                httpURLConnection.getOutputStream().write(bytes);
+                statusCode = httpURLConnection.getResponseCode();
+                int resLength = httpURLConnection.getContentLength();
+                byte[] res = new byte[resLength];
+                httpURLConnection.getInputStream().read(res);
+                resBody = new String(res, "UTF-8");
+                Log.d("httpCon", resBody);
+                long now = new Date().getTime();
+                if (statusCode == 200) {
+                    jedis.zadd(REDIS_SCORE_KEY, 0, resBody);
+                    jedis.zadd(REDIS_FILE_LIST_KEY, now, resBody);
+                } else{
+                    result.setErrorMessage("Sippai");
                 }
 
-                PutObjectRequest por = new PutObjectRequest(
-                        s3Bucket, objectKey,
-                        resolver.openInputStream(selectedImage),metadata);
-                s3Client.putObject(por);
-                jedis.zadd("pictures", 0, objectKey);
-            } catch (Exception exception) {
-
-                result.setErrorMessage(exception.getMessage());
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                result.setErrorMessage(e.getMessage());
+            } catch (IOException e) {
+                e.printStackTrace();
+                result.setErrorMessage(e.getMessage());
+            } finally {
+                if (httpURLConnection != null) {
+                    httpURLConnection.disconnect();
+                }
             }
 
             return result;

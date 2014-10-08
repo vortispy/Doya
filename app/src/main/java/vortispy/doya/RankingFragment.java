@@ -1,15 +1,14 @@
 package vortispy.doya;
 
 import android.app.Activity;
+import android.app.Fragment;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +43,7 @@ public class RankingFragment extends Fragment {
     private String REDIS_HOST;
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
+    private String REDIS_SCORE_KEY;
 
     private View v;
 
@@ -83,14 +83,12 @@ public class RankingFragment extends Fragment {
         REDIS_HOST = getString(R.string.redis_host);
         REDIS_PASSWORD = getString(R.string.redis_password);
         REDIS_PORT = Integer.valueOf(getString(R.string.redis_port));
+        REDIS_SCORE_KEY = getString(R.string.redis_score_key);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-//        GetRanking g = new GetRanking();
-//        g.execute("point");
-
         View view = inflater.inflate(R.layout.fragment_ranking, container, false);
 
         listView = (ListView) view.findViewById(R.id.rankListView);
@@ -102,7 +100,7 @@ public class RankingFragment extends Fragment {
 
         listView.setAdapter(doyaRankItemAdapter);
 
-        new GetRanking().execute("pictures");
+        new GetRanking().execute(REDIS_SCORE_KEY);
         // Inflate the layout for this fragment
 
         v = inflater.inflate(R.layout.fragment_ranking, container, false);
@@ -157,31 +155,23 @@ public class RankingFragment extends Fragment {
         @Override
         protected List<DoyaData> doInBackground(String... strings) {
             jd.auth(REDIS_PASSWORD);
-//            Set<Tuple> s = this.jd.zrevrangeWithScores(strings[0], 0, 10);
             List<DoyaData> doyaDatas = new ArrayList<DoyaData>();
-            Set<String> s = this.jd.zrevrange(strings[0], 0, 10);
-            for (String inner: s){
+            Set<Tuple> withScore = jd.zrevrangeWithScores(strings[0], 0, 9);
+            Integer rank = 0;
+            for (Tuple tuple: withScore){
                 DoyaData doyaData = new DoyaData();
-                doyaData.setObjectKey(inner);
+                doyaData.setObjectKey(tuple.getElement());
+                doyaData.setDoyaRank(rank);
+                doyaData.setDoyaPoint((int) tuple.getScore());
                 doyaDatas.add(doyaData);
+                rank++;
             }
+
             return doyaDatas;
         }
 
         @Override
         protected void onPostExecute(List<DoyaData> doyaDatas) {
-            /*
-            TextView t = (TextView) v.findViewById(R.id.rankView);
-            String text = "";
-
-            int rank = 1;
-            for (Tuple anInner : s) {
-                text += Integer.toString(rank)+ ": " + anInner.getElement()+ " " + anInner.getScore() + "point\n";
-                rank++;
-            }
-            //t.setText(s.toString());
-            t.setText(text);
-            */
             doyas.clear();
             doyas.addAll(doyaDatas);
             doyaRankItemAdapter.notifyDataSetChanged();

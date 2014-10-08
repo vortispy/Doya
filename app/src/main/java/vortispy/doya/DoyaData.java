@@ -11,8 +11,6 @@ public class DoyaData {
     private Integer doyaPoint;
     private Integer doyaRank;
 
-    public String url = "http://cdn-ak.f.st-hatena.com/images/fotolife/n/nobuoka/20130609/20130609001808.png";
-
     public void setDoyaPoint(Integer doyaPoint) {
         this.doyaPoint = doyaPoint;
     }
