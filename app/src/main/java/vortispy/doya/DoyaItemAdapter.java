@@ -1,10 +1,16 @@
 package vortispy.doya;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.util.Log;
 import android.util.LruCache;
 import android.view.LayoutInflater;
@@ -13,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.ImageLoader;
@@ -30,6 +37,7 @@ import redis.clients.jedis.Jedis;
  */
 public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     private LayoutInflater inflater;
+    private Context context;
 
     private RequestQueue requestQueue;
     private ImageLoader imageLoader;
@@ -40,6 +48,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
     private String REDIS_SCORE_KEY;
+    private String REDIS_REPORT_KEY;
 
     private class DoyaViewContainer{
         public ImageView imageView;
@@ -84,11 +93,13 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
     public DoyaItemAdapter(Context context, int resource, List<DoyaData> items) {
         super(context, resource, items);
         inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        this.context = context;
 
         REDIS_HOST = context.getString(R.string.redis_host);
         REDIS_PASSWORD = context.getString(R.string.redis_password);
         REDIS_PORT = Integer.valueOf(context.getString(R.string.redis_port));
         REDIS_SCORE_KEY = context.getString(R.string.redis_score_key);
+        REDIS_REPORT_KEY = context.getString(R.string.redis_report_key);
 
 
         this.requestQueue = Volley.newRequestQueue(context);
@@ -159,6 +170,15 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
             @Override
             public void onClick(View view) {
                 new JedisMinusOne().execute(doyaTextViewContainer);
+            }
+        });
+
+        TextView report = (TextView) convertView.findViewById(R.id.report);
+
+        report.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                reportDialog(item.getObjectKey());
             }
         });
 
@@ -459,6 +479,57 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                         .getDoyaTextViewContainer()
                         .getTextView()
                         .setText(point);
+            }
+        }
+    }
+
+    protected void reportDialog(final String url){
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        AlertDialog dialog;
+        builder.setMessage(R.string.report_dialog_message)
+                .setTitle(R.string.report_dialog_title)
+                .setPositiveButton(R.string.hai, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        ViolateReport violateReport = new ViolateReport();
+                        violateReport.execute(url);
+                    }
+                })
+                .setNegativeButton(R.string.iie, null);
+         dialog = builder.create();
+        dialog.show();
+    }
+
+    private class ViolateReport extends AsyncTask<String, Void, JedisOneResult>{
+        Jedis jedis;
+        @Override
+        protected void onPreExecute() {
+            jedis = new Jedis(REDIS_HOST, REDIS_PORT);
+        }
+
+        @Override
+        protected JedisOneResult doInBackground(String... strings) {
+            String url = strings[0];
+            JedisOneResult result = new JedisOneResult();
+
+            jedis.auth(REDIS_PASSWORD);
+
+            try {
+                Integer point = jedis.zadd(REDIS_REPORT_KEY, 1, url).intValue();
+                Log.d("report", point.toString());
+            } catch (Exception e){
+                result.setErrorMessage(e.getMessage());
+            }
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(JedisOneResult jedisOneResult) {
+            if(jedisOneResult.getErrorMessage() != null){
+                Log.d("jedis", jedisOneResult.getErrorMessage());
+            } else {
+                Toast toast = Toast.makeText(context, R.string.report_complete, Toast.LENGTH_SHORT);
+                toast.show();
             }
         }
     }

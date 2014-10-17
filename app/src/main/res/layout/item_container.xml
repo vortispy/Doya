@@ -70,7 +70,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="不適切な画像を報告する"
+                android:text="@string/report_dialog_title"
                 android:textSize="13dp"
                 android:textColor="#4183c4"
                 android:id="@+id/report"
