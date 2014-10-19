@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -104,6 +105,7 @@ public class ImageListFragment extends Fragment {
 //        mListView.setAdapter(adapter);
 
         mListView.setAdapter(doyaAdapter);
+        mListView.setScrollingCacheEnabled(false);
 
         // Inflate the layout for this fragment
         return v;
@@ -222,22 +224,16 @@ public class ImageListFragment extends Fragment {
             return doyaDataList;
         }
     }
-    private ProgressDialog createProgressDialog(Context context, String msg) {
-        ProgressDialog dialog = new ProgressDialog(context);
-        dialog.setMessage(msg);
-        dialog.setCancelable(false);
-        return dialog;
-    }
 
     private class S3GetImageListTask extends
             AsyncTask<Void,Void,S3TaskResult> {
 
-        ProgressDialog dialog;
         Jedis jd;
+        ProgressBar progressBar;
 
         protected void onPreExecute() {
-            dialog = createProgressDialog(getActivity(), "画像一覧を取得中...");
-            dialog.show();
+            progressBar = (ProgressBar) getActivity().findViewById(R.id.loading_progress);
+            progressBar.setVisibility(View.VISIBLE);
             jd = new Jedis(REDIS_HOST, REDIS_PORT);
         }
 
@@ -261,7 +257,7 @@ public class ImageListFragment extends Fragment {
         }
 
         protected void onPostExecute(S3TaskResult result) {
-            dialog.dismiss();
+            progressBar.setVisibility(View.INVISIBLE);
             if (result.getErrorMessage() != null) {
                 displayErrorAlert("画像一覧を取得できませんでした",
                         result.getErrorMessage());
