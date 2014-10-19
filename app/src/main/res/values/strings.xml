@@ -12,5 +12,9 @@
     <string name="title_activity_ranking">Ranking</string>
     <string name="title_activity_image_list">ImageList</string>
     <string name="upload_failure_title">Upload Failure</string>
-
+    <string name="report_dialog_title">不適切な画像を報告する</string>
+    <string name="report_dialog_message">この画像を不適切なものとして報告します。よろしいですか？</string>
+    <string name="hai">はい</string>
+    <string name="iie">いいえ</string>
+    <string name="report_complete">報告が完了しました。ご協力ありがとうございます。</string>
 </resources>

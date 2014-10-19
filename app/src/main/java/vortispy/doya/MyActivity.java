@@ -4,6 +4,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -12,6 +13,7 @@ import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -41,6 +43,9 @@ public class MyActivity extends Activity {
 
 
     private final int REQUEST_GALLERY = 0;
+
+    private String imei;
+    private String upload_sha;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +84,10 @@ public class MyActivity extends Activity {
         REDIS_FILE_LIST_KEY = getString(R.string.redis_file_list_key);
         REDIS_SCORE_KEY = getString(R.string.redis_score_key);
 
+        upload_sha = getString(R.string.redis_upload_sha);
+
+        TelephonyManager telephonyManager = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+        imei = telephonyManager.getDeviceId();
     }
 
     @Override
@@ -242,10 +251,18 @@ public class MyActivity extends Activity {
                 httpURLConnection.getInputStream().read(res);
                 resBody = new String(res, "UTF-8");
                 Log.d("httpCon", resBody);
-                long now = new Date().getTime();
+                Integer now = (int) new Date().getTime();
                 if (statusCode == 200) {
-                    jedis.zadd(REDIS_SCORE_KEY, 0, resBody);
-                    jedis.zadd(REDIS_FILE_LIST_KEY, now, resBody);
+                    List<String> keys = new ArrayList<String>();
+                    List<String> args = new ArrayList<String>();
+
+                    keys.add(imei);
+                    keys.add(resBody);
+                    args.add(now.toString());
+                    String jedis_ret = (String) jedis.evalsha(upload_sha, keys, args);
+                    if (jedis_ret.equals("black")){
+                        result.setErrorMessage("YOU ARE IN BLACK LIST");
+                    }
                 } else{
                     result.setErrorMessage("Sippai");
                 }
