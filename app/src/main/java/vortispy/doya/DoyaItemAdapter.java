@@ -386,6 +386,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                         .getTextView()
                         .setText(point.toString());
             }
+            jedis.close();
         }
     }
 
@@ -439,6 +440,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                         .getTextView()
                         .setText(point);
             }
+            jedis.close();
         }
     }
 
@@ -480,6 +482,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                         .getTextView()
                         .setText(point);
             }
+            jedis.close();
         }
     }
 
@@ -531,6 +534,7 @@ public class DoyaItemAdapter extends ArrayAdapter<DoyaData> {
                 Toast toast = Toast.makeText(context, R.string.report_complete, Toast.LENGTH_SHORT);
                 toast.show();
             }
+            jedis.close();
         }
     }
 }

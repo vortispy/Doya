@@ -2,7 +2,7 @@ package vortispy.doya;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Fragment;
+import android.support.v4.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -268,6 +268,7 @@ public class ImageListFragment extends Fragment {
                 doyas.addAll(result.getDoyaDataList());
                 doyaAdapter.notifyDataSetChanged();
             }
+            jd.close();
         }
     }
 

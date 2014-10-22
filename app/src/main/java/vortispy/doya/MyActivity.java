@@ -3,6 +3,9 @@ package vortispy.doya;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,11 +16,18 @@ import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
@@ -34,7 +44,7 @@ import java.util.List;
 import redis.clients.jedis.Jedis;
 
 
-public class MyActivity extends Activity {
+public class MyActivity extends FragmentActivity implements ActionBar.TabListener{
     private String REDIS_HOST;
     private Integer REDIS_PORT;
     private String REDIS_PASSWORD;
@@ -47,36 +57,49 @@ public class MyActivity extends Activity {
     private String imei;
     private String upload_sha;
 
+    private ViewPager mViewPager;
+    private AppSectionsPagerAdapter appSectionsPagerAdapter;
+    private ActionBar actionBar;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_frame);
 
 
-        final ActionBar actionBar = getActionBar();
-        assert actionBar != null;
+        appSectionsPagerAdapter = new AppSectionsPagerAdapter(getSupportFragmentManager());
+
+        mViewPager = (ViewPager) findViewById(R.id.pager);
+        mViewPager.setAdapter(appSectionsPagerAdapter);
+        actionBar = getActionBar();
         actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
+
 
         actionBar.addTab(actionBar
             .newTab()
             .setText("Image List")
-            .setTabListener(
-                    new MainTabListener<ImageListFragment>(
-                            this,
-                            "ImageList",
-                            ImageListFragment.class
-                    )
-            ));
+            .setTabListener(this));
         actionBar.addTab(actionBar
             .newTab()
             .setText("Ranking")
-            .setTabListener(
-                    new MainTabListener<RankingFragment>(
-                            this,
-                            "Ranking",
-                            RankingFragment.class
-                    )
-            ));
+            .setTabListener(this));
+
+        mViewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+            }
+
+            @Override
+            public void onPageSelected(int position) {
+                getActionBar().setSelectedNavigationItem(position);
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+
+            }
+        });
 
         REDIS_HOST = getString(R.string.redis_host);
         REDIS_PASSWORD = getString(R.string.redis_password);
@@ -88,6 +111,8 @@ public class MyActivity extends Activity {
 
         TelephonyManager telephonyManager = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
         imei = telephonyManager.getDeviceId();
+
+
     }
 
     @Override
@@ -142,10 +167,57 @@ public class MyActivity extends Activity {
         }
     }
 
+    @Override
+    public void onTabSelected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
+        mViewPager.setCurrentItem(tab.getPosition());
+    }
+
+    @Override
+    public void onTabUnselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
+
+    }
+
+    @Override
+    public void onTabReselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
+
+    }
+
     public interface OnFragmentInteractionListener {
         public void onFragmentInteraction(Uri uri);
     }
 
+    public static class AppSectionsPagerAdapter extends FragmentPagerAdapter {
+
+        public AppSectionsPagerAdapter(android.support.v4.app.FragmentManager fm) {
+            super(fm);
+        }
+
+        @Override
+        public android.support.v4.app.Fragment getItem(int i) {
+            switch (i) {
+                case 0:
+                    // The first section of the app is the most interesting -- it offers
+                    // a launchpad into the other demonstrations in this example application.
+                    return new ImageListFragment();
+                case 1:
+                    return new RankingFragment();
+
+                default:
+                    // The other sections of the app are dummy placeholders.
+                    return new ImageListFragment();
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return 2;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+            return "Section " + (position + 1);
+        }
+    }
 
     protected void displayErrorAlert(String title, String message) {
 
