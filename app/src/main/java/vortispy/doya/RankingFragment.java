@@ -1,7 +1,7 @@
 package vortispy.doya;
 
 import android.app.Activity;
-import android.app.Fragment;
+import android.support.v4.app.Fragment;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -175,6 +175,7 @@ public class RankingFragment extends Fragment {
             doyas.clear();
             doyas.addAll(doyaDatas);
             doyaRankItemAdapter.notifyDataSetChanged();
+            jd.close();
         }
     }
 }

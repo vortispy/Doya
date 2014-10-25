@@ -8,6 +8,12 @@
         revision="20.0.0"
         sha1="1dd0d38df9c6d21e893f2e52403f1cd99e91cd81"/>
     <item
+        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/jedis-2.6.0-cb8af8e0a6a4dcba8a534ac1d1ac6d1112b9cc66.jar"
+        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/redis.clients/jedis/2.6.0/aeff5e4ad1af2cbb4c5350cb44d144273dcadc06/jedis-2.6.0.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="aeff5e4ad1af2cbb4c5350cb44d144273dcadc06"/>
+    <item
         dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/httpcore-4.3.2-9120ec164196e9cc21c56c3fa1b39017d84b910f.jar"
         jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/org.apache.httpcomponents/httpcore/4.3.2/31fbbff1ddbf98f3aa7377c94d33b0447c646b6e/httpcore-4.3.2.jar"
         jumboMode="false"
@@ -32,22 +38,22 @@
         revision="20.0.0"
         sha1="4f8826f7a470c31f5089d73e3afa0d6761dc1b79"/>
     <item
-        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/aws-android-sdk-1.7.1.1-core-7944b8ea8d677437815c929f6bae0eb379d6133e.jar"
-        jar="/Users/vortispy/Documents/android/Doya/app/libs/aws-android-sdk-1.7.1.1-core.jar"
-        jumboMode="false"
-        revision="20.0.0"
-        sha1="385121088c5a9ca2a74706391a9b013373cea280"/>
-    <item
-        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/jedis-2.6.0-cb8af8e0a6a4dcba8a534ac1d1ac6d1112b9cc66.jar"
-        jar="/Users/vortispy/.gradle/caches/modules-2/files-2.1/redis.clients/jedis/2.6.0/aeff5e4ad1af2cbb4c5350cb44d144273dcadc06/jedis-2.6.0.jar"
-        jumboMode="false"
-        revision="20.0.0"
-        sha1="aeff5e4ad1af2cbb4c5350cb44d144273dcadc06"/>
-    <item
         dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/volley-484b7e93be995d099d9f0e1bc79419ac5841e19b.jar"
         jar="/Users/vortispy/Documents/android/Doya/app/libs/volley.jar"
         jumboMode="false"
         revision="20.0.0"
         sha1="6a890fad51c7663cbe9cf3e98d2d3492dc7536e9"/>
+    <item
+        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/support-v4-18.0.0-2484d88715cbcdaf306e7f8449d6546e84c1520d.jar"
+        jar="/Applications/Android Studio.app/sdk/extras/android/m2repository/com/android/support/support-v4/18.0.0/support-v4-18.0.0.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="44ec51e9d395a47aab135e5e1b556c0007442156"/>
+    <item
+        dex="/Users/vortispy/Documents/android/Doya/app/build/intermediates/pre-dexed/debug/aws-android-sdk-1.7.1.1-core-7944b8ea8d677437815c929f6bae0eb379d6133e.jar"
+        jar="/Users/vortispy/Documents/android/Doya/app/libs/aws-android-sdk-1.7.1.1-core.jar"
+        jumboMode="false"
+        revision="20.0.0"
+        sha1="385121088c5a9ca2a74706391a9b013373cea280"/>
 
 </pre-dex-items>
